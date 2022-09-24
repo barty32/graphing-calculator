@@ -163,6 +163,7 @@ export class ExpressionParser {
     operatorStack = [];
     tokenStack = []; //output of tokenize()
     outputQueue = []; //output of parse()
+    result = null;
     //
     //
     //
@@ -593,8 +594,9 @@ export class ExpressionParser {
             }
         }
         //console.log(tmpStack);
-        //return this;
-        return tmpStack[0];
+        this.result = tmpStack[0];
+        return this;
+        //return tmpStack[0];
     }
 }
 function createMultiplyToken() {

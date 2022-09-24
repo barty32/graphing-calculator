@@ -1,0 +1,742 @@
+
+// GRAPH.TS -------------------------------------------------------------------------------------------
+
+// for (let i = -this.xOffset; i < this.width - this.xOffset; i++){
+//     if (i % 100 == 0) {
+//         this.ctx.beginPath();
+//         this.ctx.rect((i + this.xOffset) * this.xScale, 0, 2, this.height);
+//         this.ctx.fill();
+//     }
+// }
+// for (let i = -this.yOffset; i < this.width - this.yOffset; i++) {
+//     if (i % 100 == 0) {
+//         this.ctx.beginPath();
+//         this.ctx.rect(0, (i + this.yOffset) * this.yScale, this.width, 2);
+//         this.ctx.fill();
+//     }
+// }
+//
+//
+// for (let i = 0; i < this.width; i += gridScale.x) {
+//     this.ctx.beginPath();
+//     this.ctx.rect(i, 0, 2, this.height);
+//     this.ctx.fill();
+// }
+
+// private zoomTouch(distance: number, x: number, y: number) {
+//     const newScale = this.xScale * (distance / this.lastDistance);
+//     this.yScale = this.xScale = this.xScale * (distance / this.lastDistance);
+
+//     this.xOffset = -(x - (x + this.xOffset) * (distance / this.lastDistance));
+//     this.yOffset = y - (y - this.yOffset) * (distance / this.lastDistance);
+
+//     this.draw();
+// }
+
+// const scale = 1 / this.xScale;
+// const gridScale = 2 ** (Math.log2(128 * scale) | 0);
+// const size = Math.max(this.width, this.height) * scale + gridScale * 2;
+// const x = ((this.xOffset * scale - gridScale) / gridScale | 0) * gridScale;
+// const y = ((this.yOffset * scale - gridScale) / gridScale | 0) * gridScale;
+// this.ctx.lineWidth = 1;
+// this.ctx.strokeStyle = "grey";
+// this.ctx.beginPath();
+// for (let i = 0; i < size; i += gridScale) {
+//     this.ctx.moveTo(x + i, y);
+//     this.ctx.lineTo(x + i, y + size);
+//     this.ctx.moveTo(x, y + i);
+//     this.ctx.lineTo(x + size, y + i);
+// }
+// this.ctx.setTransform(1, 0, 0, 1, 0, 0); // reset the transform so the lineWidth is 1
+// this.ctx.stroke();
+// for (let i = 0; i < this.width; i++){
+//     if (Math.abs(((i + this.xOffset) / this.xScale) % xGrid) < 1 / this.xScale) {
+//         //draw subgrid
+//         for (let j = 0; j < xGrid; j += xGrid / 5){
+//             this.ctx.beginPath();
+//             this.ctx.rect(i + j, 0, 0.5, this.height);
+//             this.ctx.fill();
+//         }
+
+
+//         this.ctx.beginPath();
+//         this.ctx.rect(i , 0, 2, this.height);
+//         this.ctx.fill();
+//     }
+// }
+// for (let i = 0; i < this.height; i++) {
+//     if (Math.abs(((-i + this.yOffset) / this.yScale) % yGrid) < 1 / this.yScale) {
+//         this.ctx.beginPath();
+//         this.ctx.rect(0, i, this.width, 2);
+//         this.ctx.fill();
+//     }
+// }
+
+//let prevTouch: Touch | null = null;
+        //touch handlers
+        // this.canvas.ontouchstart = (e) => {
+        //     this.moving = true;
+        // }
+        // this.canvas.ontouchmove = (e) => {
+        //     const touch = e.touches[0];
+        //     if (this.moving && prevTouch) {
+        //         this.move(touch.pageX - prevTouch.pageX, touch.pageY - prevTouch.pageY);
+        //     }
+        //     prevTouch = touch;
+        // }
+        // this.canvas.ontouchend = (e) => {
+        //     this.moving = false;
+        //     prevTouch = null;
+        // }
+
+            // private prettyPrintExponent(expr: string) {
+    //     //expr must be valid exponent format string, i.e.:'5e+23' or '6e-8'
+    //     const num = Number(expr);
+    //     if (isNaN(num) || !isFinite(num)) {
+    //         return expr;
+    //     }
+    //     if (num == 0) {
+    //         return '0';
+    //     }
+    //     const expPos = expr.indexOf('e');
+    //     const exponent = expr.substring(expr.charAt(expPos + 1) == '+' ? expPos + 2 : expPos + 1);
+    //     return `${expr.substring(0, expPos)}·10<sup>${exponent}</sup>`;
+    // }
+
+    //const sp = str.split('.')
+        //return sp[0] + (sp[1] ? '.' + (sp[1][0] ? sp[1][0] : '') + (sp[1][1] ? sp[1][1] : '') : '');//(Math.round(value / round) * round).toPrecision(1);
+
+
+// addLine(fn: GraphFn, name: string, xRes = Infinity, color: string) {
+//     this.lines.push({ fn, color, id: lineID, name, on: true, xRes });
+// }
+
+// removeLine(id: number) {
+//     this.lines.find((line: Line, index: number) => {
+//         if (line.id == id) {
+//             this.lines.splice(index, 1);
+//             return true;
+//         }
+//         return false;
+//     });
+// }
+
+// getLine(id: number): LineParams {
+//     const line = this.lines.find((line) => {
+//         if (line.id == id) return true;
+//     });
+//     if (!line) throw new Error('Line with this ID does not exist');
+//     return line;
+// }
+
+
+
+// private getGridOffsets(tileWidth: number, tileHeight: number) {//xGrid: number, yGrid: number
+//     let x = 0;
+//     let y = 0;
+//     for (let i = 0; i < this.width; i++){
+//         if (Math.abs(((i + this.xOffset) / this.xScale) % xGrid) <= 1 / this.xScale) {
+//             x = i - xGrid * this.xScale;
+//             break;
+//         }
+//     }
+//     for (let i = 0; i < this.height; i++) {
+//         if (Math.abs(((-i + this.yOffset) / this.yScale) % yGrid) <= 1 / this.yScale) {
+//             y = i - yGrid * this.yScale;
+//             break;
+//         }
+//     }
+//     return { x: x, y: y };
+// }
+
+
+//['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+
+
+// function roundTo(value: number, round: number) {
+//     return value - value % round;
+// }
+
+
+//working draw:
+// draw() {
+//     const oldFill = this.ctx.fillStyle;
+//     this.ctx.fillStyle = this.options.background;
+//     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+//     if (this.options.grid)
+//         this.drawGrid();
+//     for (const lineKey in this.lines) {
+//         const line = this.lines[lineKey];
+//         if (!line || !line.on) continue;
+//         this.ctx.beginPath();
+//         this.ctx.strokeStyle = line.color;
+//         this.ctx.lineWidth = this.options.lineWidth;
+//         //move to initial position
+//         this.ctx.moveTo(0, line.fn(this.xOffset / this.xScale) * -this.yScale + this.yOffset);
+
+//         let yPrev = line.fn(this.xOffset / this.xScale) * -this.yScale + this.yOffset;
+
+//         if (!line.xRes) {//infinite resolution
+//             for (let i = 0; i < this.width; i++) {//let i = -this.xOffset; i < this.width - this.xOffset; i += 1/*1 / this.xScale*/
+//                 //this.ctx.lineTo(i + this.xOffset, fn(i / 31.8 / (this.width - 2 * this.xOffset)) * -200 + this.yOffset);
+//                 const x = (i + this.xOffset) / this.xScale;
+
+//                 let y;// = line.cache[x];
+//                 //if (y === undefined) {
+//                 const res = line.fn(x)
+//                 y = res * -this.yScale + this.yOffset;
+//                 //line.cache[x] = res;
+//                 //}
+//                 //else {
+//                 //    y = y * -this.yScale + this.yOffset;
+//                 //}
+//                 const delta = Math.abs(y - yPrev);
+//                 if ((yPrev < 0 || yPrev > this.height) && (y < 0 || y > this.height)) {
+//                     continue;
+//                 }
+//                 else if ((yPrev < 0 || yPrev > this.height) && (y >= 0 && y <= this.height)) {
+//                     this.ctx.moveTo(i, yPrev);
+//                     //this.ctx.arc(i, yPrev, 1, 0, 2 * Math.PI);
+//                     this.ctx.lineTo(i, yPrev);
+//                 }
+//                 // if (y < 0 || y > this.height) {
+//                 //     for (let j = i - 1; j < i; j += 1 / delta * 8) {
+//                 //         let xNew = (j + this.xOffset) / this.xScale;
+//                 //         let yNew = line.fn(xNew) * -this.yScale + this.yOffset;
+//                 //         if (yNew < 0) yNew = 0;
+//                 //         if (yNew > this.height) yNew = this.height;
+//                 //         this.ctx.moveTo(j, yNew);
+//                 //         this.ctx.arc(j, yNew, 1, 0, 2 * Math.PI);
+//                 //     }
+//                 // }
+
+//                 // TODO: add discontinuity detection
+//                 // if (y > 10 * this.height || y < -(10 * this.height)) {
+//                 //     this.ctx.moveTo(i, y);
+//                 //     continue;
+//                 // }
+//                 yPrev = y;
+//                 //this.ctx.moveTo(i, y);
+//                 //this.ctx.arc(i, y, 1, 0, 2 * Math.PI);
+//                 this.ctx.lineTo(i, y);
+//             }
+//         } else {
+//             for (let i = -line.xRes * this.xScale; i < this.width + line.xRes * this.xScale; i++) {
+//                 const x = (i + this.xOffset) / this.xScale;
+//                 if (line.xRes && Math.abs(x % line.xRes) > 1 / this.xScale) continue;
+//                 const y = line.fn(x / (line.xRes ? line.xRes : 1)) * -this.yScale + this.yOffset;
+//                 this.ctx.lineTo(i, y);
+//             }
+//         }
+//         this.ctx.stroke();
+//         console.log(Object.keys(line.cache).length);
+//     }
+//     this.ctx.fillStyle = oldFill;
+// }
+
+
+// AUDIO.TS -------------------------------------------------------------------------------------------
+
+//gainNode1: GainNode;
+//gainNode2: GainNode;
+//audioBuffer1: AudioBuffer;
+//audioBuffer2: AudioBuffer;
+//bufferNode1: AudioBufferSourceNode | null = null;
+//bufferNode2: AudioBufferSourceNode | null = null;
+//scriptNode: ScriptProcessorNode;
+
+//constructor()
+//this.gainNode1 = this.audioCtx.createGain();
+//this.gainNode2 = this.audioCtx.createGain();
+//this.gainNode1.connect(this.audioCtx.destination);
+//this.gainNode2.connect(this.audioCtx.destination);
+//this.audioBuffer1 = this.audioCtx.createBuffer(1, this.audioCtx.sampleRate, this.audioCtx.sampleRate);
+//this.audioBuffer2 = this.audioCtx.createBuffer(1, this.audioCtx.sampleRate, this.audioCtx.sampleRate);
+
+//addNode()
+    //const node = this.nodes[id] = {
+//    playing: false,
+//    fn,
+    //oscNode: this.audioCtx.createOscillator(),
+    //gainNode: this.audioCtx.createGain(),
+    //audioBuffer: this.audioCtx.createBuffer(1, this.audioCtx.sampleRate, this.audioCtx.sampleRate),
+    //bufferNode: null
+//};
+//this.gainNode1.gain.linearRampToValueAtTime(0.0001, this.audioCtx.currentTime+0.001);
+
+//await new Promise(r => setTimeout(r, 1));
+
+//this.gainNode1.gain.exponentialRampToValueAtTime(1.0, this.audioCtx.currentTime + 0.002);
+//this.playingNodes++;
+//this.audioCtx.resume();
+
+//getNode(id: number): AudioNode {
+//    const line = this.nodes[id];
+//    if (!line) throw new Error('Node with this ID does not exist');
+//    return line;
+//}
+
+/*stop(stopTime = 0.1) {
+    stopTime += this.audioCtx.currentTime;
+    this.gainNode.gain.exponentialRampToValueAtTime(0.01, stopTime);
+    //this.gainNode.gain.setValueAtTime(0.01, stopTime);
+    //for (const nodeKey in this.nodes) {
+    //    this.nodes[nodeKey]?.bufferNode?.stop(stopTime);
+    //}
+    this.bufferNode?.stop(stopTime);
+}*/
+
+//stopNode(id: number) {
+//    this.nodes[id]?.bufferNode?.stop();
+//}
+//usingBuffer1 = true;
+//started = false;
+
+/*
+async start(startTime = 0.001) {
+    //startTime += this.audioCtx.currentTime;
+
+    //this.workletNode.port.postMessage({
+    //    message: '10 messages received!',
+    //    spec: this.nodes[0],
+    //});
+
+    const currentBuffer = this.audioBuffer1//this.usingBuffer1 ? this.audioBuffer1 : this.audioBuffer2;
+    const currentGain = this.gainNode1//this.usingBuffer1 ? this.gainNode1 : this.gainNode2;
+    //const oldGain = this.usingBuffer1 ? this.gainNode2 : this.gainNode1;
+    //this.usingBuffer1 = !this.usingBuffer1;
+
+    let rawArray = currentBuffer.getChannelData(0);
+    //for (let i = 0; i < currentBuffer.length; i++) {
+    //   rawArray[i] = 0;
+    //}
+    this.playingNodes = 0;
+
+    for (const nodeKey in this.nodes) {
+        const node = this.nodes[nodeKey];
+        if (!node || !node.playing) continue;
+        this.playingNodes++;
+        //node.bufferNode = new AudioBufferSourceNode(this.audioCtx, { buffer: node.audioBuffer, loop: true });
+        //node.bufferNode.connect(this.gainNode);
+        
+        //for (let i = 0; i < currentBuffer.length; i++) {
+        //    rawArray[i] += node.fn(i * 1000 / this.audioCtx.sampleRate);//Math.sin(i * 2 * Math.PI / this.audioCtx.sampleRate * 1000);
+        //}
+    }
+
+    for (let i = 0; i < currentBuffer.length; i++) {
+        rawArray[i] = 0;
+
+        for (const nodeKey in this.nodes) {
+            const node = this.nodes[nodeKey];
+            if (!node || !node.playing) continue;
+            //this.playingNodes++;
+
+            rawArray[i] += node.fn(i * 1000 / this.audioCtx.sampleRate) ?? 0;//Math.sin(i * 2 * Math.PI / this.audioCtx.sampleRate * 1000);
+        }
+    }
+
+    //this.stop(0);
+    //this.bufferNode?.disconnect();
+
+    if (this.playingNodes === 0) {
+        this.bufferNode2?.stop();
+        this.bufferNode2?.disconnect();
+        this.started = false;
+        return;
+    };
+
+    if (!this.started) {
+        this.started = true;
+        //if (!this.bufferNode) {
+        this.bufferNode1 = new AudioBufferSourceNode(this.audioCtx, { buffer: currentBuffer, loop: true });
+        //this.bufferNode.connect(this.gainNode);
+        //this.bufferNode.start();
+        //}
+        //return;
+        //this.bufferNode.buffer = this.audioBuffer;
+        this.bufferNode1.connect(currentGain);
+
+        //because FF
+        //currentGain.gain.setValueAtTime(0.0001, this.audioCtx.currentTime);
+        //currentGain.gain.exponentialRampToValueAtTime(1.0, this.audioCtx.currentTime + 0.1);
+        this.bufferNode1.start();
+    }
+
+    //const stopTime = this.audioCtx.currentTime + 0.1;
+
+    //oldGain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+
+    //this.bufferNode2?.stop(stopTime);
+    //this.bufferNode2?.disconnect();
+    //this.bufferNode2 = this.bufferNode1;
+}
+*/
+
+
+
+    // start(startTime = 0.1) {
+    //     startTime += this.audioCtx.currentTime;
+    //     //this.gainNode.gain.value = 1;
+    //     //because FF
+    //     this.gainNode.gain.setValueAtTime(1.0, startTime);
+    //     //for (const nodeKey in this.nodes) {
+    //     //    this.nodes[nodeKey]?.bufferNode?.start(startTime);
+    //     //}
+    //     this.bufferNode?.start();
+    // }
+
+    //init() {
+        // this.audio = {
+        //     //custom: false,
+        //     waveType: 'sine',
+        //     frequency: 440,
+        //     amplitude: 50,
+        //     duty: 50,
+        //     skew: 50,
+        //     phase: 0,
+        //     bias: 0,
+        // };
+        //this.audioCtx = new AudioContext();
+        //this.oscNode = this.audioCtx.createOscillator();
+        //this.gainNode = this.audioCtx.createGain();
+        //this.bufferNode = this.audioCtx.createBufferSource();
+        //this.audioBuffer = this.audioCtx.createBuffer(1, this.audioCtx.sampleRate, this.audioCtx.sampleRate);
+        //this.gainNode.gain.value = 0.5;
+        //this.oscNode.connect(this.gainNode);
+        //this.bufferNode.connect(this.gainNode);
+        //this.gainNode.connect(this.audioCtx.destination);
+    //}
+
+
+    // generateAudio() {
+    //     if (!this.audioCtx || !this.audioBuffer) {
+    //         console.warn('Audio context or audio buffer is null');
+    //         return;
+    //     }
+    //     const line = graph.getLine(this.id);
+
+    //     let nowBuffering = this.audioBuffer.getChannelData(0);
+    //     for (var i = 0; i < this.audioBuffer.length; i++) {
+    //         nowBuffering[i] = line.fn(i * 1000 / this.audioCtx.sampleRate);//Math.sin(i * 2 * Math.PI / this.audioCtx.sampleRate * 1000);
+    //     }
+    //     const oldBuffer = this.bufferNode;
+    //     this.bufferNode = new AudioBufferSourceNode(this.audioCtx);
+    //     this.bufferNode.buffer = this.audioBuffer;
+    //     this.bufferNode.connect(this.audioCtx.destination);
+    //     this.bufferNode.loop = true;
+    //     if (this.playing) {
+    //         this.bufferNode.start();
+    //         oldBuffer?.stop();
+    //     }
+    // }
+
+
+/*start(startTime = 0.001) {
+    startTime += this.audioCtx.currentTime;
+
+    const currentBuffer = this.usingBuffer1 ? this.audioBuffer1 : this.audioBuffer2;
+    const currentGain = this.usingBuffer1 ? this.gainNode1 : this.gainNode2;
+    const oldGain = this.usingBuffer1 ? this.gainNode2 : this.gainNode1;
+    this.usingBuffer1 = !this.usingBuffer1;
+
+    let rawArray = currentBuffer.getChannelData(0);
+    for (let i = 0; i < currentBuffer.length; i++) {
+        rawArray[i] = 0;
+    }
+    this.playingNodes = 0;
+
+    for (const nodeKey in this.nodes) {
+        const node = this.nodes[nodeKey];
+        if (!node || !node.playing) continue;
+        this.playingNodes++;
+        //node.bufferNode = new AudioBufferSourceNode(this.audioCtx, { buffer: node.audioBuffer, loop: true });
+        //node.bufferNode.connect(this.gainNode);
+        
+        for (let i = 0; i < currentBuffer.length; i++) {
+            rawArray[i] += node.fn(i * 1000 / this.audioCtx.sampleRate);//Math.sin(i * 2 * Math.PI / this.audioCtx.sampleRate * 1000);
+        }
+    }
+
+    //this.stop(0);
+    //this.bufferNode?.disconnect();
+
+    if (this.playingNodes === 0) {
+        this.bufferNode2?.stop();
+        this.bufferNode2?.disconnect();
+        return;
+    };
+
+    //if (!this.bufferNode) {
+        this.bufferNode1 = new AudioBufferSourceNode(this.audioCtx, { buffer: currentBuffer, loop: true });
+        //this.bufferNode.connect(this.gainNode);
+        //this.bufferNode.start();
+    //}
+    //return;
+    //this.bufferNode.buffer = this.audioBuffer;
+    this.bufferNode1.connect(currentGain);
+
+    
+    //this.gainNode.gain.value = 1;
+    //because FF
+    currentGain.gain.setValueAtTime(0.0001, this.audioCtx.currentTime);
+    currentGain.gain.exponentialRampToValueAtTime(1.0, this.audioCtx.currentTime + 0.1);
+    //for (const nodeKey in this.nodes) {
+    //    this.nodes[nodeKey]?.bufferNode?.start(startTime);
+    //}
+    this.bufferNode1.start();
+
+    const stopTime = this.audioCtx.currentTime + 0.1;
+
+    oldGain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+
+    this.bufferNode2?.stop(stopTime);
+    //this.bufferNode2?.disconnect();
+    this.bufferNode2 = this.bufferNode1;
+}*/
+
+
+// CALCULATOR.TS -------------------------------------------------------------------------------------------
+
+// fileInput.files[0].text().then((jsonData) => {
+//     const obj = JSON.parse(jsonData);
+//     if (obj.format != "GraphingCore_v1.0") throw new Error("Unsupported JSON file format");
+//     this.data = obj.data;
+//     graph.getLine(this.id).xRes = obj.resolution;
+//     graph.attachFn(this.id, (x) => {
+//         return this.data[Math.round(x)];
+//     });
+//     graph.draw();
+// })
+
+// function getLine(id: string) {
+//     const line = lines.find((line) => {
+//         if (line.id == id) return true;
+//     });
+//     if (!line) throw new Error('Line with this ID does not exist');
+//     return line;
+// }
+
+
+// function playAudio(pfn: (x: number) => number) {
+//     const audioCtx = new AudioContext();//|| window.webkitAudioContext
+//     //console.log(audioCtx.sampleRate);
+//     const myArrayBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+
+//     let nowBuffering = myArrayBuffer.getChannelData(0);
+//     for (var i = 0; i < myArrayBuffer.length; i++) {
+//         nowBuffering[i] = pfn(i / audioCtx.sampleRate);//Math.sin(i * 2 * Math.PI / audioCtx.sampleRate * 1000);//Math.random() * 2 - 1;
+//     }
+
+//     //currentLine.playing = true;
+
+//     const source = audioCtx.createOscillator();
+
+//     // const source = audioCtx.createBufferSource();
+//     // source.buffer = myArrayBuffer;
+//     source.connect(audioCtx.destination);
+//     // source.loop = true;
+//     //source.start()
+//     return source;
+// }
+
+//play audio
+// if (audioMgr.getNode(this.id).playing) {
+//     audioMgr.getNode(this.id).playing = false;
+//     //this.audioCtx?.suspend();
+//     btn2.innerHTML = play;//'<img src="/assets/images/play.svg">';
+//     audioMgr.start();
+//     //console.log('Audio stopped');
+// }
+// else {
+//     btn2.innerHTML = pause;//'<img src="/assets/images/pause.svg">';
+//     //this.generateAudio();
+//     //if (!oscStarted) {
+//     //this.oscNode?.start();
+//     //this.bufferNode?.start();
+//     //oscStarted = true;
+//     //}
+//     audioMgr.getNode(this.id).playing = true;
+//     //mgr.prepareAllNodes();
+//     audioMgr.start();
+//     //this.audioCtx?.resume();
+//     //console.log('Audio started');
+// }
+
+
+// function test() {
+
+//     const fn = (x: number) => {
+//         //return Math.sin(x);
+//         return (Math.abs(parseInt((x).toFixed(0)))) % 2 - 1 / 2;
+//         //return 0.5 * (Math.sin(200 * x) + Math.sin(400 * x) + Math.sin(800 * x));
+//         //return 100 * Math.cos(x * 2 * Math.PI);
+//     }
+//     const fn2 = (x: number) => {
+//         return 1 / x;
+//     }
+//     const fn3 = (x: number) => {
+//         return Math.sin(x);
+//     }
+//     graph.addLine(fn, "red");
+//     graph.addLine(fn2, "#2222FF");
+//     graph.addLine(fn3, "#00FF00");
+//     graph.draw();
+//     //play(fn);
+// }
+
+//lines.push(new Line(LineType.expression));
+//lines.push(new Line(LineType.audio));
+//lines.push(new Line(LineType.rawData));
+
+    // waveList.innerHTML = waveList.innerHTML + `
+    //     <div class="sub-container rounded wave-box" id="${id}">
+    //         <div class="input-group">
+    //             <a type="button" class="btn btn-secondary wave-btn">
+    //                 <img src="/assets/images/about.svg">
+    //             </a>
+    //             <input type="text" class="form-control" value="${id}">
+    //             <a type="button" class="btn btn-success wave-btn">
+    //                 <img src="/assets/images/play.svg">
+    //             </a>
+    //             <a type="button" class="btn btn-secondary wave-btn">
+    //                 <img src="/assets/images/settings.svg">
+    //             </a>
+    //             <a type="button" class="btn btn-danger wave-btn">
+    //                 <img src="/assets/images/trash.svg">
+    //             </a>
+    //         </div>
+    //         <div class="input-group mt-2">
+    //             <span class="input-group-text input-label-box">f(x):</span>
+    //             <input type="text" class="form-control">
+    //         </div>
+    //     </div>
+    // `;
+
+
+// getUniqueId() {
+//     let i = lines.length;
+//     let id: string;
+//     do {
+//         if (this.type == LineType.audio) {
+//             id = 'audioLine' + i;
+//         }
+//         else if (this.type == LineType.rawData) {
+//             id = 'dataLine' + i;
+//         }
+//         else {
+//             id = 'line' + i;
+//         }
+//         i++;
+//     }
+//     while (lines.find((line) => {
+//         if (line.id == id) return true;
+//     }));
+//     return id;
+// }
+
+    // initAudioSystem() {
+    //     this.audio = {
+    //         //custom: false,
+    //         waveType: 'sine',
+    //         frequency: 440,
+    //         amplitude: 50,
+    //         duty: 50,
+    //         skew: 50,
+    //         phase: 0,
+    //         bias: 0,
+    //     };
+    //     this.audioCtx = new AudioContext();
+    //     this.oscNode = this.audioCtx.createOscillator();
+    //     this.gainNode = this.audioCtx.createGain();
+    //     //this.bufferNode = this.audioCtx.createBufferSource();
+    //     this.audioBuffer = this.audioCtx.createBuffer(1, this.audioCtx.sampleRate, this.audioCtx.sampleRate);
+    //     this.gainNode.gain.value = 0.5;
+    //     //this.oscNode.connect(this.gainNode);
+    //     //this.bufferNode.connect(this.gainNode);
+    //     this.gainNode.connect(this.audioCtx.destination);
+    // }
+
+    // generateAudio() {
+    //     if (!this.audioCtx || !this.audioBuffer) {
+    //         console.warn('Audio context or audio buffer is null');
+    //         return;
+    //     }
+    //     const line = graph.getLine(this.id);
+
+    //     let nowBuffering = this.audioBuffer.getChannelData(0);
+    //     for (var i = 0; i < this.audioBuffer.length; i++) {
+    //         nowBuffering[i] = line.fn(i * 1000 / this.audioCtx.sampleRate);//Math.sin(i * 2 * Math.PI / this.audioCtx.sampleRate * 1000);
+    //     }
+    //     const oldBuffer = this.bufferNode;
+    //     this.bufferNode = new AudioBufferSourceNode(this.audioCtx);
+    //     this.bufferNode.buffer = this.audioBuffer;
+    //     this.bufferNode.connect(this.audioCtx.destination);
+    //     this.bufferNode.loop = true;
+    //     if (this.playing) {
+    //         this.bufferNode.start();
+    //         oldBuffer?.stop();
+    //     }
+    // }
+
+
+    //bind this in functions
+        //this.getUniqueId        = this.getUniqueId.bind(this);
+        //this.initAudioSystem    = this.initAudioSystem.bind(this);
+        //this.generateAudio      = this.generateAudio.bind(this);
+        //this.onChangeVisibility = this.onChangeVisibility.bind(this);
+        //this.createWaveBox      = this.createWaveBox.bind(this);
+
+// lines.find((value, index) => {
+    //     if (value.id == this.id) {
+    //         lines.splice(index, 1);
+    //         graph.removeLine(this.id);
+    //         graph.draw();
+    //         return true;
+    //     }
+    //     return false;
+    // });
+
+    //triangle wave
+    //return line.audio.amplitude / 100 * Math.min((((line.audio.frequency * x * 2 / 1000 - line.audio.phase / 360*2) % 2) + 2) % 2, Math.abs(((-(line.audio.frequency * x * 2 / 1000 - line.audio.phase / 360*2) % 2) + 2) % 2)) - 1;
+
+
+            //play audio
+        // if (audioMgr.getNode(this.id).playing) {
+        //     audioMgr.getNode(this.id).playing = false;
+        //     if (boxBtn) boxBtn.innerHTML = play;
+        //     if (topBtn) topBtn.innerHTML = play;
+        //     audioMgr.start();
+        // }
+        // else {
+        //     if (boxBtn) boxBtn.innerHTML = pause;
+        //     if (topBtn) topBtn.innerHTML = pause;
+        //     audioMgr.getNode(this.id).playing = true;
+        //     audioMgr.start();
+        // }
+
+
+
+// INDEX.PHP ----------------------------------------------------------------------------------------
+
+<!-- <script type="module">
+            import Graph from './graph.js';
+
+            const graph = new Graph(document.querySelector('#graph'));
+
+            console.log('adding line:' + graph.addLine(() => {
+                return Infinity
+            }, 'name', 0, 'lime'));
+            console.log('adding line:' + graph.addLine(() => {
+                return Infinity
+            }, 'name', 0, 'red'));
+            console.log('adding line:' + graph.addLine(() => {
+                return Infinity
+            }, 'name', 0, 'blue'));
+
+            graph.removeLine(1)
+
+            console.log(graph.getLine(2));
+
+            graph.draw();
+        </script> -->

@@ -1,7 +1,6 @@
-type AudioFn = (x: number) => number;
+type AudioFn = (x: number) => (number | undefined);
 
 export interface AudioSpec {
-    //custom: boolean;
     waveType: string;
     frequency: number;
     amplitude: number;
@@ -9,201 +8,142 @@ export interface AudioSpec {
     skew: number;
     phase: number;
     bias: number;
+    start: number;
+    end: number;
+    currentView: boolean;
+    loop: boolean;
 }
-
 interface AudioNode{
-    //id: number;
-    //params: AudioSpec;
-    playing: boolean;
+    params: AudioSpec;
     fn: AudioFn;
-    //oscNode: OscillatorNode;
-    //gainNode: GainNode;
-    //audioBuffer: AudioBuffer | null;
-    //bufferNode: AudioBufferSourceNode | null;
+    audioBuffer: AudioBuffer | null;
+    bufferNode: AudioBufferSourceNode | null;
 }
 
-
+export enum Msg{
+    addNode,
+    removeNode,
+    updateNode,
+    startNode,
+    stopNode
+}
 export class AudioManager {
-    //playing = false;
 
     audioCtx: AudioContext;
-    gainNode1: GainNode;
-    gainNode2: GainNode;
-    audioBuffer1: AudioBuffer;
-    audioBuffer2: AudioBuffer;
-    bufferNode1: AudioBufferSourceNode | null = null;
-    bufferNode2: AudioBufferSourceNode | null = null;
-
-    nodes: { [index: number]: AudioNode | undefined } = {};
+    workletNode: AudioWorkletNode | null = null;
+    customNodes: { [index: number]: AudioNode | undefined } = {};
     private playingNodes = 0;
-    
 
     constructor() {
         this.audioCtx = new AudioContext();
-        this.gainNode1 = this.audioCtx.createGain();
-        this.gainNode2 = this.audioCtx.createGain();
-        this.gainNode1.connect(this.audioCtx.destination);
-        this.gainNode2.connect(this.audioCtx.destination);
-        this.audioBuffer1 = this.audioCtx.createBuffer(1, this.audioCtx.sampleRate, this.audioCtx.sampleRate);
-        this.audioBuffer2 = this.audioCtx.createBuffer(1, this.audioCtx.sampleRate, this.audioCtx.sampleRate);
+        this.audioCtx.audioWorklet.addModule('./js/audio-processor.js')
+        .then((value) => {
+            this.workletNode = new AudioWorkletNode(this.audioCtx, 'audio-processor');
+            this.workletNode.connect(this.audioCtx.destination);
+        })
+        // .catch(() => {
+        //     console.error('Failed to create Audio processor worklet');
+        // })
     }
 
+    addNode(id: number, data: AudioSpec, fn?: AudioFn) {
 
-    addNode(id: number, fn: AudioFn) {
-        const node = this.nodes[id] = {
-            playing: false,
-            fn,
-            //oscNode: this.audioCtx.createOscillator(),
-            //gainNode: this.audioCtx.createGain(),
-            //audioBuffer: this.audioCtx.createBuffer(1, this.audioCtx.sampleRate, this.audioCtx.sampleRate),
-            //bufferNode: null
-        };
+        if (data.waveType == 'custom') {
+            this.createCustomWave(id, data, fn ?? (() => 0));
+        }
+        else {
+            this.workletNode?.port.postMessage({
+                message: Msg.addNode,
+                id: id,
+                audio: data
+            });
+        }
     }
 
     removeNode(id: number) {
-        this.nodes[id] = undefined;
+        this.stopNode(id);
+        this.workletNode?.port.postMessage({
+            message: Msg.removeNode,
+            id: id
+        });
     }
 
-    getNode(id: number): AudioNode {
-        const line = this.nodes[id];
-        if (!line) throw new Error('Node with this ID does not exist');
-        return line;
+    startNode(id: number, onended?: ((ev: Event) => any)) {
+        if (this.customNodes[id]?.params.waveType == 'custom') {
+            this.startCustomWave(id, onended);
+        }
+        else {
+            this.workletNode?.port.postMessage({
+                message: Msg.startNode,
+                id: id
+            });
+        }
+        this.playingNodes++;
+        this.audioCtx.resume();
     }
 
-    /*stop(stopTime = 0.1) {
-        stopTime += this.audioCtx.currentTime;
-        this.gainNode.gain.exponentialRampToValueAtTime(0.01, stopTime);
-        //this.gainNode.gain.setValueAtTime(0.01, stopTime);
-        //for (const nodeKey in this.nodes) {
-        //    this.nodes[nodeKey]?.bufferNode?.stop(stopTime);
-        //}
-        this.bufferNode?.stop(stopTime);
-    }*/
-
-    //stopNode(id: number) {
-    //    this.nodes[id]?.bufferNode?.stop();
-    //}
-    usingBuffer1 = true;
-
-    start(startTime = 0.001) {
-        startTime += this.audioCtx.currentTime;
-
-        const currentBuffer = this.usingBuffer1 ? this.audioBuffer1 : this.audioBuffer2;
-        const currentGain = this.usingBuffer1 ? this.gainNode1 : this.gainNode2;
-        const oldGain = this.usingBuffer1 ? this.gainNode2 : this.gainNode1;
-        this.usingBuffer1 = !this.usingBuffer1;
-
-        let rawArray = currentBuffer.getChannelData(0);
-        for (let i = 0; i < currentBuffer.length; i++) {
-            rawArray[i] = 0;
+    stopNode(id: number) {
+        if (this.customNodes[id]?.params.waveType == 'custom') {
+            this.customNodes[id]?.bufferNode?.stop();
         }
-        this.playingNodes = 0;
-
-        for (const nodeKey in this.nodes) {
-            const node = this.nodes[nodeKey];
-            if (!node || !node.playing) continue;
-            this.playingNodes++;
-            //node.bufferNode = new AudioBufferSourceNode(this.audioCtx, { buffer: node.audioBuffer, loop: true });
-            //node.bufferNode.connect(this.gainNode);
-            
-            for (let i = 0; i < currentBuffer.length; i++) {
-                rawArray[i] += node.fn(i * 1000 / this.audioCtx.sampleRate);//Math.sin(i * 2 * Math.PI / this.audioCtx.sampleRate * 1000);
-            }
+        else {
+            this.workletNode?.port.postMessage({
+                message: Msg.stopNode,
+                id: id
+            });
         }
-
-        //this.stop(0);
-        //this.bufferNode?.disconnect();
-
+        this.playingNodes--;
         if (this.playingNodes === 0) {
-            this.bufferNode2?.stop();
-            this.bufferNode2?.disconnect();
-            return;
-        };
-
-        //if (!this.bufferNode) {
-            this.bufferNode1 = new AudioBufferSourceNode(this.audioCtx, { buffer: currentBuffer, loop: true });
-            //this.bufferNode.connect(this.gainNode);
-            //this.bufferNode.start();
-        //}
-        //return;
-        //this.bufferNode.buffer = this.audioBuffer;
-        this.bufferNode1.connect(currentGain);
-
-        
-        //this.gainNode.gain.value = 1;
-        //because FF
-        currentGain.gain.setValueAtTime(0.0001, this.audioCtx.currentTime);
-        currentGain.gain.exponentialRampToValueAtTime(1.0, this.audioCtx.currentTime + 0.1);
-        //for (const nodeKey in this.nodes) {
-        //    this.nodes[nodeKey]?.bufferNode?.start(startTime);
-        //}
-        this.bufferNode1.start();
-
-        const stopTime = this.audioCtx.currentTime + 0.1;
-
-        oldGain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
-
-        this.bufferNode2?.stop(stopTime);
-        //this.bufferNode2?.disconnect();
-        this.bufferNode2 = this.bufferNode1;
+            this.audioCtx.suspend();
+        }
     }
 
-    // start(startTime = 0.1) {
-    //     startTime += this.audioCtx.currentTime;
-    //     //this.gainNode.gain.value = 1;
-    //     //because FF
-    //     this.gainNode.gain.setValueAtTime(1.0, startTime);
-    //     //for (const nodeKey in this.nodes) {
-    //     //    this.nodes[nodeKey]?.bufferNode?.start(startTime);
-    //     //}
-    //     this.bufferNode?.start();
-    // }
+    createCustomWave(id: number, params: AudioSpec, fn: AudioFn) {
+
+        const buffer = new AudioBuffer({ length: this.audioCtx.sampleRate * (params.end - params.start), numberOfChannels: 1, sampleRate: this.audioCtx.sampleRate });
+        let rawArray = buffer.getChannelData(0);
+        for (let i = 0; i < buffer.length; i++) {
+            rawArray[i] = fn(i * 1000 / this.audioCtx.sampleRate) ?? 0;
+        }
+        this.customNodes[id] = {
+            params,
+            fn,
+            audioBuffer: buffer,
+            bufferNode: null
+        };
+    }
+
+    startCustomWave(id: number, onended?: ((ev: Event) => any)) {
+        const node = this.customNodes[id];
+        if (!node) return;
+
+        node.bufferNode = new AudioBufferSourceNode(this.audioCtx, { buffer: node.audioBuffer, loop: node.params.loop });
+        node.bufferNode.connect(this.audioCtx.destination);
+        node.bufferNode.onended = onended ?? null;
+        node.bufferNode.start();
+    }
+}
 
 
+export function sine(x: number, frequency: number, amplitude: number, phase: number, bias: number) {
+    return amplitude / 100 * Math.sin(frequency * x / 1000 * 2 * Math.PI - phase / 180 * Math.PI);
+}
 
+export function square(x: number, frequency: number, amplitude: number, duty: number, phase: number, bias: number) {
+    return amplitude / 100 * (mod(frequency * x / 1000 - phase / 360, 1) < (duty / 100) ? 1 : -1);
+}
 
-    //init() {
-        // this.audio = {
-        //     //custom: false,
-        //     waveType: 'sine',
-        //     frequency: 440,
-        //     amplitude: 50,
-        //     duty: 50,
-        //     skew: 50,
-        //     phase: 0,
-        //     bias: 0,
-        // };
-        //this.audioCtx = new AudioContext();
-        //this.oscNode = this.audioCtx.createOscillator();
-        //this.gainNode = this.audioCtx.createGain();
-        //this.bufferNode = this.audioCtx.createBufferSource();
-        //this.audioBuffer = this.audioCtx.createBuffer(1, this.audioCtx.sampleRate, this.audioCtx.sampleRate);
-        //this.gainNode.gain.value = 0.5;
-        //this.oscNode.connect(this.gainNode);
-        //this.bufferNode.connect(this.gainNode);
-        //this.gainNode.connect(this.audioCtx.destination);
-    //}
+export function triangle(x: number, frequency: number, amplitude: number, skew: number, phase: number, bias: number) {
+    amplitude /= 50;
+    skew /= 100;
+    const period = 1000 / frequency;
+    x -= phase / 360 * period;
+    x += skew * period / 2;
+    x = mod(x, period);
+    const freq = (frequency * x / 1000) * 2;
+    return (x < skew * period ? mod(freq / (2 * skew), 1) : mod(-(freq - 2 * skew) / (2 * (1 - skew)), 1)) * amplitude - amplitude / 2;
+}
 
-
-    // generateAudio() {
-    //     if (!this.audioCtx || !this.audioBuffer) {
-    //         console.warn('Audio context or audio buffer is null');
-    //         return;
-    //     }
-    //     const line = graph.getLine(this.id);
-
-    //     let nowBuffering = this.audioBuffer.getChannelData(0);
-    //     for (var i = 0; i < this.audioBuffer.length; i++) {
-    //         nowBuffering[i] = line.fn(i * 1000 / this.audioCtx.sampleRate);//Math.sin(i * 2 * Math.PI / this.audioCtx.sampleRate * 1000);
-    //     }
-    //     const oldBuffer = this.bufferNode;
-    //     this.bufferNode = new AudioBufferSourceNode(this.audioCtx);
-    //     this.bufferNode.buffer = this.audioBuffer;
-    //     this.bufferNode.connect(this.audioCtx.destination);
-    //     this.bufferNode.loop = true;
-    //     if (this.playing) {
-    //         this.bufferNode.start();
-    //         oldBuffer?.stop();
-    //     }
-    // }
+function mod(x: number, m: number) {
+    return ((x % m) + m) % m;
 }

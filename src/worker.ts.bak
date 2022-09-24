@@ -1,0 +1,34 @@
+//import LineParams from "./graph.js";
+
+
+self.onmessage = (e) => {
+    calculate(e.data);
+}
+
+
+function calculate(lines: LineParams) {
+    for (const lineKey in lines) {
+        const line = lines[lineKey];
+        if (!line || !line.on) continue;
+
+        //let prevY = 0;
+        line.points = [];
+        for (let i = -10; i < 20; i += 0.0005) {
+            const y = line.fn(i);
+
+            //const delta = Math.abs(prevY - y);
+            // if (delta > 1) {
+            //     for (let j = i - 0.0005; j < i; j += 0.0005 / delta) {
+            //         line.points.push({ x: i, y: j, connect: true });
+            //     }
+            // }
+            // let y = 0;
+            // for (let n = 1; n < 1000; n++){
+            //     y += 1 / (2 * n - 1) * Math.sin(2 * Math.PI * i * (2 * n - 1));
+            // }
+            //prevY = y;
+            line.points.push({ x: i, y, connect: true, selected: false });
+        }
+        self.postMessage(line);
+    }
+}

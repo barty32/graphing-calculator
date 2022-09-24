@@ -207,6 +207,7 @@ export class ExpressionParser{
     tokenStack: Token[] = [];//output of tokenize()
     outputQueue: Token[] = [];//output of parse()
     
+    result: number | null = null;
 
 
 
@@ -667,8 +668,9 @@ export class ExpressionParser{
         }
 
         //console.log(tmpStack);
-        //return this;
-        return tmpStack[0];
+        this.result = tmpStack[0];
+        return this;
+        //return tmpStack[0];
     }
 }
 

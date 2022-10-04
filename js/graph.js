@@ -1,61 +1,15 @@
 // TODO list:
 //
-// - add discontinuity detection
-// - allow xy mode
 // - add variable sliders
 // - make frequency slider logarithmic
 // - fix dpi rendering issues
-// - add tooltips to buttons
-// - fix side panel animation
 // - add export audio
-// - make proper error system
-// - style add button
-// - add degrees x radians
-// - localize
+// - add how to use
+// - add degree operator
+// - copy handler to input
+// - fix empty parentheses
 //
-// Done (v1.4)
-// 
-//
-//
-// Done (v1.3)
-// - added 'sign' function
-// - fixed: scale numbers weren't have right value at some positions
-// - fixed: scale numbers with trailing zeroes higher than 10 were rendered incorrectly
-// - fixed: some scale numbers weren't exponent pretty-printed
-// - ui improvements:
-//   -> added options
-//   -> hide unrelevant options from audio line settings
-// - added option to customize custom audio wave playback
-// - lines are now interactive (show value on click)
-// - added function caching
-// - improved drawing and calculating system
-// - audio system is finally completely working
-//   -> fixed rendering audio lines in negative x region
-//   -> fixed audio param changing issues
-//
-// Done (v1.2)
-// - separated id and name systems
-// - Graph class now uses different (number-based) ID system
-// - completely rewritten audio system
-//   -> fixed: audio is started randomly out of phase
-//   -> fixed: audio is not playing in Firefox
-// - switched to custom math parser -> huge performance boost
-// - added ton of new functions
-// - added alternative fonts for scale numbers
-// - fixed scale numbers + pretty-print exponents
-//
-// Done (v1.1):
-// - add maximum and minimum zoom
-// - (add controls to canvas) this
-// - add support for color change
-// - added: side panel can be opened/closed
-// - removed settings buttons from non-audio lines
-// - fix stick numbers on right
-// - add support for zoom gestures
-// - fixed: y-axis numbers were mirrored
-// - fixed square wave
-// - timebase of audio lines is now 1 ms
-//
+import { ExpressionType } from './parser.js';
 //API version 2.0
 //changes in 2.0:
 // 1. addLine, getLine and removeLine API now uses a new ID based system
@@ -73,7 +27,6 @@ export class Graph {
     scaleXAxis = false;
     scaleYAxis = false;
     resizeObserver;
-    //private worker: Worker;
     height;
     width;
     xOffset = 0;
@@ -105,7 +58,6 @@ export class Graph {
         this.xOffset = -this.width / 2;
         this.yOffset = this.height / 2;
         this.canvas.style.cursor = 'grab';
-        //this.worker = new Worker('js/worker.js');
         //pointer handlers
         this.canvas.onpointerdown = (e) => {
             const pt = this.isPointOnLine(e.clientX, e.clientY);
@@ -215,15 +167,6 @@ export class Graph {
             }
         });
         this.resizeObserver.observe(this.canvas);
-        // this.worker.onmessage = (e) => {
-        //     const line = e.data as LineParams;
-        //     this.getLine(line.id).points = line.points;
-        //     this.draw();
-        // }
-        // this.worker.onerror = (error) => {
-        //     console.error(`Worker error: ${error.message}`);
-        //     throw error;
-        // };
         document.querySelector('#graph-zoom-in')?.addEventListener('click', () => {
             this.zoom(-100, this.width / 2, this.height / 2);
         });
@@ -242,7 +185,7 @@ export class Graph {
      */
     addLine(name, color = 'red') {
         const lineID = ++this.idCounter;
-        this.lines[lineID] = { fn: undefined, color, id: lineID, name, on: true, points: [] };
+        this.lines[lineID] = { color, id: lineID, name, on: true, points: [], type: ExpressionType.UNKNOWN, calculating: false };
         return lineID;
     }
     removeLine(id) {
@@ -254,12 +197,48 @@ export class Graph {
             throw new Error('Line with this ID does not exist');
         return line;
     }
-    attachFn(id, fn) {
+    attachFn(id, fn, type) {
         this.getLine(id).fn = fn;
-        this.calculate();
+        this.getLine(id).type = type;
+        this.calculate(2);
+    }
+    attachExpression(id, expression, variables) {
+        const line = this.getLine(id);
+        if (!line.worker) {
+            //unfortunaly i have to use absolute adress :(
+            line.worker = new Worker('/tools/graphing-calculator/js/worker.js', { type: "module" });
+            line.worker.onmessage = (e) => {
+                const recvline = e.data;
+                if (recvline.finished) {
+                    line.calculating = false;
+                }
+                this.getLine(recvline.ID).points = recvline.points;
+                this.draw();
+            };
+            line.worker.onerror = (error) => {
+                console.error(`Worker error: ${error.message}`);
+                throw error;
+            };
+        }
+        line.expression = expression;
+        line.variables = variables;
+        this.calculate(2);
+        // const data: IWorkerSendData = {
+        //     expression,
+        //     width: this.width,
+        //     height: this.height,
+        //     xOffset: this.xOffset,
+        //     yOffset: this.yOffset,
+        //     xScale: this.xScale,
+        //     yScale: this.yScale,
+        //     ID: id,
+        //     variables
+        // }
+        // worker.postMessage(data);
     }
     attachArray(id, array) {
-        this.getLine(id).fn = undefined;
+        delete this.getLine(id).fn;
+        this.getLine(id).type = ExpressionType.UNKNOWN;
         this.getLine(id).points = array;
         this.draw();
     }
@@ -290,7 +269,7 @@ export class Graph {
             if (!line || !line.on)
                 continue;
             for (const pt of line.points) {
-                if (pt.y === undefined)
+                if (pt.x === undefined || pt.y === undefined)
                     continue;
                 if (Math.abs(pt.x - x) < dx && Math.abs(pt.y - y) < dy) {
                     return { point: pt, line: line };
@@ -466,7 +445,7 @@ export class Graph {
         }
         return str;
     }
-    draw(calculateLines = false) {
+    draw(calculateLines = 0) {
         const oldFill = this.ctx.fillStyle;
         this.ctx.fillStyle = this.options.background;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -474,7 +453,7 @@ export class Graph {
             this.drawGrid();
         this.drawAxes();
         if (calculateLines) {
-            this.calculate();
+            this.calculate(calculateLines);
         }
         else {
             this.drawLines();
@@ -492,19 +471,18 @@ export class Graph {
             this.ctx.lineWidth = this.options.lineWidth;
             let prevX = 0;
             let prevY = 0;
-            let drawnPt = 0;
             for (const point of line.points) {
-                if (point.y === undefined)
+                if (point.x === undefined || point.y === undefined)
                     continue;
                 const x = point.x * this.xScale - this.xOffset;
                 const y = -point.y * this.yScale + this.yOffset;
-                if ((prevY < 0 || prevY > this.height) && (y < 0 || y > this.height)) {
-                    continue;
-                }
-                else if ((prevY < 0 || prevY > this.height) && (y >= 0 && y <= this.height)) {
-                    this.ctx.moveTo(x, prevY);
-                    this.ctx.lineTo(x, prevY);
-                }
+                // if ((prevY < 0 || prevY > this.height) && (y < 0 || y > this.height)) {
+                //     continue;
+                // }
+                // else if ((prevY < 0 || prevY > this.height) && (y >= 0 && y <= this.height)) {
+                //     this.ctx.moveTo(x, prevY);
+                //     this.ctx.lineTo(x, prevY);
+                // }
                 if (point.selected) {
                     this.ctx.fillStyle = 'white';
                     this.ctx.fillRect(x, 0, 1, this.height);
@@ -516,15 +494,17 @@ export class Graph {
                     continue;
                 }
                 if (Math.abs(prevX - x) < 1 /*|| Math.abs(prevY - y) < 1*/) {
-                    continue;
+                    //continue;
                 }
                 if (!point.connect) {
+                    //this.ctx.beginPath();
+                    //this.ctx.moveTo(x, y);
+                    //this.ctx.arc(x, y, 1, 0, 2 * Math.PI);
                     this.ctx.moveTo(x, y);
-                    this.ctx.arc(x, y, 1, 0, 2 * Math.PI);
-                    this.ctx.moveTo(x, y);
+                    //this.ctx.stroke();
+                    this.ctx.strokeRect(x, y, 1, 1);
                     continue;
                 }
-                drawnPt++;
                 this.ctx.lineTo(x, y);
                 prevX = x;
                 prevY = y;
@@ -536,46 +516,112 @@ export class Graph {
             this.drawNumber(`(${this.convert(drawLabel.x)}, ${this.convert(drawLabel.y)})`, drawLabel.xpos + 5, drawLabel.ypos - 5, true);
         }
     }
-    async calculate() {
+    async calculate(recalculate) {
         //const int = setInterval(async () => {
         //    console.log('waiting');
         //    await new Promise(r => setTimeout(r, 2));
         //    
         //    this.draw();
         //}, 1);
+        //let time = 0;
         for (const lineKey in this.lines) {
             const line = this.lines[lineKey];
-            if (!line || !line.on || !line.fn)
+            if (!line || !line.on /* || !line.fn*/)
                 continue;
-            //let prevY = 0;
-            this.getLine(line.id).points = [];
-            const start = (this.xOffset / this.xScale);
-            const end = ((this.xOffset + this.width) / this.xScale);
-            //console.log('Start: ' + start + ', End: ' + end);
-            for (let i = start, k = 0; i < end; i += 1 / this.xScale, k++) {
-                const y = line.fn(i);
-                // if (line.points[i] !== undefined) {
-                //     continue;
-                // }
-                //const delta = Math.abs(prevY - y);
-                // if (delta > 1) {
-                //     for (let j = i - 0.0005; j < i; j += 0.0005 / delta) {
-                //         line.points.push({ x: i, y: j, connect: true });
-                //     }
-                // }
-                // let y = 0;
-                // for (let n = 1; n < 1000; n++){
-                //     y += 1 / (2 * n - 1) * Math.sin(2 * Math.PI * i * (2 * n - 1));
-                // }
-                line.points.push({ x: i, y, connect: true, selected: false });
-                // if (k > 200) {
-                //     await new Promise(r => setTimeout(r, 1));
-                //     //line.points.sort((a, b) => a.x - b.x);
-                //     this.draw();
-                //     k = 0;
-                // }
+            if (line.fn) {
+                line.points = [];
+                if (line.type == ExpressionType.FUNCTION) {
+                    const start = (this.xOffset / this.xScale);
+                    const end = ((this.xOffset + this.width) / this.xScale);
+                    //console.log('Start: ' + start + ', End: ' + end);
+                    //let prevY = line.fn(start, NaN);
+                    //let prevVal = 0
+                    for (let i = start, k = 0; i < end; i += 1 / this.xScale, k++) {
+                        const y = line.fn(i, NaN);
+                        //const prevVal = Math.sin(i - 1 / this.xScale) + Math.sin(2 * i - 1 / this.xScale) + Math.sin(3 * i - 1 / this.xScale) + 2.5;
+                        //const val = Math.sin(i) + Math.sin(2 * i) + Math.sin(3 * i) + 2.5;
+                        //const y = (val - prevVal)* this.xScale;
+                        //prevVal = y;
+                        // if (line.points[i] !== undefined) {
+                        //     continue;
+                        // }
+                        //const dt = Math.abs(y - line.fn(i - 1 / this.xScale, NaN)) / (1 / this.xScale);
+                        //console.log(`x: ${i}, derivative: ${dt}`);
+                        //const delta = Math.abs(prevY - y);
+                        //let connect = Math.abs(dt) > 50 ? false : true;//1 * this.xScale
+                        // if (dt > 1 / this.xScale) {
+                        //     //console.log(`delta is ${delta}, i: ${i}`);
+                        //     //debug = 1;
+                        //     // for (let j = i - 0.0005; j < i; j += 0.0005 / delta) {
+                        //     //     line.points.push({ x: i, y: j, connect: true });
+                        //     // }
+                        //     const count = Math.floor(dt * this.xScale);
+                        //     if (count < this.height) {
+                        //         //console.log(count);
+                        //         const step = 1 / count;
+                        //         for (let j = 1; j < count; j++) {
+                        //             const tx = i - (1 / this.xScale) + j * step;
+                        //             line.points.push({ x: tx, y: line.fn(tx), connect: false, selected: false, debug: 2 });
+                        //         }
+                        //     }
+                        // }
+                        line.points.push({ x: i, y, connect: true, selected: false, debug: 0 });
+                        // if (performance.now() - time > 2) {
+                        //     console.log('waiting');
+                        //     await new Promise(r => setTimeout(r, 2));
+                        //     //line.points.sort((a, b) => a.x - b.x);
+                        //     this.draw();
+                        //     time = performance.now();
+                        //     //k = 0;
+                        // }
+                        //prevY = y;
+                    }
+                    //line.points.sort((a, b) => a.x - b.x);
+                }
+                else if (line.type == ExpressionType.YFUNCTION) {
+                    const start = (this.yOffset / this.yScale);
+                    const end = ((this.yOffset - this.height) / this.yScale);
+                    for (let i = start; i >= end; i -= 1 / this.yScale) {
+                        const x = line.fn(NaN, i);
+                        line.points.push({ x, y: i, connect: true, selected: false, debug: 0 });
+                    }
+                }
+                else if (line.type == ExpressionType.EQUATION) {
+                    const startx = (this.xOffset / this.xScale);
+                    const endx = ((this.xOffset + this.width) / this.xScale);
+                    const starty = (this.yOffset / this.yScale);
+                    const endy = ((this.yOffset - this.height) / this.yScale);
+                    for (let i = startx; i < endx; i += 1 / this.xScale) {
+                        for (let j = starty; j >= endy; j -= 1 / this.yScale) {
+                            if (line.fn(i, j) == 1) {
+                                line.points.push({ x: i, y: j, connect: false, selected: false, debug: 0 });
+                            }
+                        } //x^2+y^2=4
+                        //await new Promise(r => setTimeout(r, 1));
+                        //this.draw();
+                    }
+                }
+                this.draw();
+                return;
             }
-            //line.points.sort((a, b) => a.x - b.x);
+            //let prevY = 0;
+            //line.points = [];
+            if (line.worker && !line.calculating) {
+                const data = {
+                    expression: line.expression ?? [],
+                    width: this.width,
+                    height: this.height,
+                    xOffset: this.xOffset,
+                    yOffset: this.yOffset,
+                    xScale: this.xScale,
+                    yScale: this.yScale,
+                    ID: line.id,
+                    recalculate,
+                    variables: line.variables ?? {}
+                };
+                line.calculating = true;
+                line.worker.postMessage(data);
+            }
         }
         //clearInterval(int);
         this.draw();
@@ -584,7 +630,7 @@ export class Graph {
         this.xOffset += -x;
         this.yOffset += y;
         //console.log(`Xoffset: ${this.xOffset}, YOffset: ${this.yOffset}`);
-        this.draw(true);
+        this.draw(1);
     }
     zoom(delta, x, y, ctrl = false, shift = false, touch = false) {
         //console.log(`Xoffset: ${this.xOffset}, YOffset: ${this.yOffset}`);
@@ -609,7 +655,7 @@ export class Graph {
                 this.yOffset = y - (y - this.yOffset) * scale;
             }
         }
-        this.draw(true);
+        this.draw(2);
         //console.log(`Xscale: ${this.xScale}, YScale: ${this.yScale}, x: ${x}, y: ${y}, gridx: ${this.getGridScale(this.xScale).scale}`);
     }
     resetZoom() {
@@ -617,7 +663,7 @@ export class Graph {
         this.yOffset = this.height / 2;
         this.xScale = 100;
         this.yScale = 100;
-        this.draw(true);
+        this.draw(2);
     }
     fixSize() {
         this.canvas.width = this.width = this.canvas.clientWidth;

@@ -102,8 +102,9 @@ export class AudioManager {
 
         const buffer = new AudioBuffer({ length: this.audioCtx.sampleRate * (params.end - params.start), numberOfChannels: 1, sampleRate: this.audioCtx.sampleRate });
         let rawArray = buffer.getChannelData(0);
+        console.log(params.start);
         for (let i = 0; i < buffer.length; i++) {
-            rawArray[i] = fn(i * 1000 / this.audioCtx.sampleRate) ?? 0;
+            rawArray[i] = fn((i / this.audioCtx.sampleRate + params.start) * 1000) ?? 0;
         }
         this.customNodes[id] = {
             params,

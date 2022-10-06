@@ -1,5 +1,5 @@
 import { Graph } from './graph.js';
-import { ExpressionParser, ExpressionType, ParserFatalError, Severity } from './parser.js';
+import { ExpressionParser, ExpressionType } from './parser.js';
 import { AudioManager } from './audio.js';
 import DataConverter from './converter.js';
 import { sine, square, triangle } from './audio.js';
@@ -368,7 +368,7 @@ class Line {
         row2.appendChild(errTooltip);
         row2.appendChild(warningImg);
         row2.appendChild(warnTooltip);
-        const fnInput = document.createElement('span'); //input
+        const fnInput = document.createElement('math-field'); //input
         //fnInput.type = 'text';
         fnInput.contentEditable = 'true';
         //fnInput.spellcheck = false;
@@ -376,89 +376,86 @@ class Line {
         fnInput.classList.add('form-control');
         //sum(?, n, 1, 10) sin((x)/(5)+2)*(1)/(4x)+ cos(4)
         //\sum _{n=1}^{10}\sin \left(\frac{x}{5}+2\right)\cdot \frac{1}{4o}+\cos \left(4\right)
-        const mf = MQ.MathField(fnInput, {
-            leftRightIntoCmdGoes: 'up',
-            restrictMismatchedBrackets: true,
-            sumStartsWithNEquals: true,
-            supSubsRequireOperand: true,
-            substituteTextArea: () => document.createElement('span'),
-            autoCommands: 'pi tau infinity infty sqrt sum prod coprod',
-            autoOperatorNames: this.parser.getSupportedFunctions(),
-            handlers: {
-                edit: (f) => {
-                    try {
-                        this.expression = this.parser.latexToString(f.latex());
-                        console.log('Latex: ' + f.latex());
-                        console.log('Expr: ' + this.expression);
-                        this.parser.tokenize(this.expression).checkSyntax().parse();
-                        this.parser.evaluate({ x: Infinity, y: Infinity, degrees: degrees ? 1 : 0 });
-                        errTooltip.innerHTML = '';
-                        warnTooltip.innerHTML = '';
-                        for (const err of this.parser.problems) {
-                            if (err.severity == Severity.WARNING) {
-                                warnTooltip.innerHTML += err.desc + '<br>';
-                            }
-                        }
-                        errorImg.style.display = 'none';
-                        warningImg.style.transform = 'none';
-                        warningImg.style.display = warnTooltip.innerHTML ? 'block' : 'none';
-                        fnInput.style.color = warnTooltip.innerHTML ? 'orange' : 'black';
-                        switch (this.parser.getExpressionType()) {
-                            case ExpressionType.FUNCTION:
-                                fnType.innerHTML = 'f(x):';
-                                break;
-                            case ExpressionType.YFUNCTION:
-                                fnType.innerHTML = 'f(y):';
-                                break;
-                            case ExpressionType.EQUATION:
-                                fnType.innerHTML = 'f(x,y):';
-                                break;
-                        }
-                    }
-                    catch (e) {
-                        if (!(e instanceof ParserFatalError)) {
-                            throw e;
-                        }
-                        errTooltip.innerHTML = e.message + '<br>';
-                        warnTooltip.innerHTML = '';
-                        for (const err of this.parser.problems) {
-                            if (err.severity >= Severity.ERROR) {
-                                errTooltip.innerHTML += err.desc + '<br>';
-                            }
-                            else if (err.severity == Severity.WARNING) {
-                                warnTooltip.innerHTML += err.desc + '<br>';
-                            }
-                        }
-                        errorImg.style.display = 'block';
-                        warningImg.style.transform = 'translateX(-27px)';
-                        warningImg.style.display = warnTooltip.innerHTML ? 'block' : 'none';
-                        fnInput.style.color = errTooltip.innerHTML ? 'red' : warnTooltip.innerHTML ? 'orange' : 'black';
-                        graph.draw(2);
-                        return;
-                    }
-                    if (this.type == LineType.audio) {
-                        graph.attachFn(this.id, (x, y) => {
-                            try {
-                                return this.parser.evaluate({ x, y, degrees: degrees ? 1 : 0, res: Math.min(graph.xScale, graph.yScale) });
-                            }
-                            catch (e) {
-                                return undefined;
-                            }
-                        }, this.parser.getExpressionType());
-                    }
-                    else {
-                        graph.attachExpression(this.id, this.parser.outputQueue, { degrees: degrees ? 1 : 0, res: Math.min(graph.xScale, graph.yScale) });
-                    }
-                    if (this.type == LineType.audio && this.audioData?.waveType == 'custom') {
-                        this.audioDataChanged();
-                    }
-                }
-            }
-        });
-        fnInput.addEventListener('copy', (e) => {
-            e.clipboardData?.setData('text/plain', this.parser.latexToString(mf.latex()));
-            e.preventDefault();
-        });
+        // const mf = MQ.MathField(fnInput, {
+        //     leftRightIntoCmdGoes: 'up',
+        //     restrictMismatchedBrackets: true,
+        //     sumStartsWithNEquals: true,
+        //     supSubsRequireOperand: true,
+        //     charsThatBreakOutOfSupSub: '+-=<>',
+        //     substituteTextArea: () => document.createElement('span'),
+        //     autoCommands: 'pi tau infinity infty sqrt sum prod coprod',//theta int
+        //     autoOperatorNames: this.parser.getSupportedFunctions(),//'sin cos tan tg root power pow abs max min mod fac round trunc ceil floor sign sgn add sub mul div shl shr not and or xor ln log exp',
+        //     handlers: {
+        //         edit: (f) => {
+        //             try {
+        //                 this.expression = this.parser.latexToString(f.latex());
+        //                 console.log('Latex: ' + f.latex());
+        //                 console.log('Expr: ' + this.expression);
+        //                 this.parser.tokenize(this.expression).checkSyntax().parse();
+        //                 console.log(this.parser.evaluate({ x: Infinity, y: Infinity, degrees: degrees ? 1 : 0 }).asymptotes);
+        //                 errTooltip.innerHTML = '';
+        //                 warnTooltip.innerHTML = '';
+        //                 for (const err of this.parser.problems) {
+        //                     if (err.severity == Severity.WARNING) {
+        //                         warnTooltip.innerHTML += err.desc + '<br>';
+        //                     }
+        //                 }
+        //                 errorImg.style.display = 'none';
+        //                 warningImg.style.transform = 'none';
+        //                 warningImg.style.display = warnTooltip.innerHTML ? 'block' : 'none';
+        //                 fnInput.style.color = warnTooltip.innerHTML ? 'orange' : 'black';
+        //                 switch (this.parser.getExpressionType()) {
+        //                     case ExpressionType.FUNCTION:
+        //                         fnType.innerHTML = 'f(x):';
+        //                         break;
+        //                     case ExpressionType.YFUNCTION:
+        //                         fnType.innerHTML = 'f(y):';
+        //                         break;
+        //                     case ExpressionType.EQUATION:
+        //                         fnType.innerHTML = 'f(x,y):';
+        //                         break;
+        //                 }
+        //             }
+        //             catch (e) {
+        //                 if (!(e instanceof ParserFatalError)) {
+        //                     throw e;
+        //                 }
+        //                 errTooltip.innerHTML = (e as Error).message + '<br>';
+        //                 warnTooltip.innerHTML = '';
+        //                 for (const err of this.parser.problems) {
+        //                     if (err.severity >= Severity.ERROR) {
+        //                         errTooltip.innerHTML += err.desc + '<br>';
+        //                     }
+        //                     else if (err.severity == Severity.WARNING) {
+        //                         warnTooltip.innerHTML += err.desc + '<br>';
+        //                     }
+        //                 }
+        //                 errorImg.style.display = 'block';
+        //                 warningImg.style.transform = 'translateX(-27px)';
+        //                 warningImg.style.display = warnTooltip.innerHTML ? 'block' : 'none';
+        //                 fnInput.style.color = errTooltip.innerHTML ? 'red' : warnTooltip.innerHTML ? 'orange' : 'black';
+        //                 graph.draw(2);
+        //                 return;
+        //             }
+        //             graph.attachExpression(this.id, this.parser.outputQueue, { degrees: degrees ? 1 : 0, res: Math.min(graph.xScale, graph.yScale) });
+        //             if (this.type == LineType.audio && this.audioData?.waveType == 'custom') {
+        //                 // graph.attachFn(this.id, (x, y) => {
+        //                 //     try {
+        //                 //         return this.parser.evaluate({ x, y, degrees: degrees ? 1 : 0, res: Math.min(graph.xScale, graph.yScale) });
+        //                 //     }
+        //                 //     catch (e) {
+        //                 //         return undefined;
+        //                 //     }
+        //                 // }, this.parser.getExpressionType());
+        //                 this.audioDataChanged();
+        //             }
+        //         }
+        //     }
+        // });
+        // fnInput.addEventListener('copy', (e) => {
+        //     e.clipboardData?.setData('text/plain', this.parser.latexToString(mf.latex()));
+        //     e.preventDefault();
+        // });
         // fnInput.addEventListener('paste', (e) => {
         //     e.preventDefault();
         //     mf.typedText(e.clipboardData?.getData('text') ?? '');
@@ -627,7 +624,7 @@ class Line {
                     if (this.playing)
                         this.toggleAudio();
                     fn = (x) => {
-                        return this.parser.evaluate({ x: x });
+                        return this.parser.evaluate({ x: x }).result;
                     };
                     break;
                 default:

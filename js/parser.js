@@ -613,6 +613,7 @@ export class ExpressionParser {
     }
     evaluateInternal(variables, tokens = this.outputQueue) {
         let tmpStack = [];
+        let asymptotes = [];
         for (const token of tokens) {
             switch (token.type) {
                 case TokenType.NUMBER:
@@ -675,9 +676,16 @@ export class ExpressionParser {
                     //    tmpStack.push(0);
                     //    break;
                     //}
+                    if (token.name == 'log') {
+                        const vars = structuredClone(variables);
+                        vars['x'] = 0;
+                        asymptotes.push(-this.evaluateInternal(vars, token.arguments[0]).result);
+                    }
                     //recursively evaluate all arguments
                     for (const arg of token.arguments) {
-                        args.push(this.evaluateInternal(variables, arg));
+                        const res = this.evaluateInternal(variables, arg);
+                        args.push(res.result);
+                        asymptotes = asymptotes.concat(res.asymptotes);
                     }
                     //goniometric functions have one hidden argument (degrees/radians)
                     if (token.name == 'sin' || token.name == 'cos' || token.name == 'tan' || token.name == 'tg') {
@@ -714,7 +722,7 @@ export class ExpressionParser {
         //console.log(tmpStack);
         // this.result = tmpStack[0];
         // return this;
-        return tmpStack[0];
+        return { result: tmpStack[0], asymptotes: asymptotes };
     }
     getExpressionType(tokens = this.outputQueue) {
         const i = tokens.findIndex(e => e.type == TokenType.EQUAL);

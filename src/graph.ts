@@ -10,7 +10,9 @@
 // - fix empty parentheses
 //
 
-
+// Done (v1.5)
+// - fixed bug with touch controls on Firefox
+//
 // Done (v1.4)
 // - changed icon
 // - fixed side panel animation
@@ -34,7 +36,6 @@
 // - added absolute value | notation
 // - added some poor super slow version of xy mode
 // - maybe finally discontinuity detection using derivatives?
-//
 //
 // Done (v1.3)
 // - added 'sign' function
@@ -138,7 +139,7 @@ export class Graph{
     private moving = false;
     private inspecting: LineParams | undefined;
     private evCache: PointerEvent[] = [];
-    //private evCache: {[pointerId: number]: PointerEvent} = {};
+    private evPrevCache: {[pointerId: number]: PointerEvent} = {};
     private lastDistance = -1;
     private scaleXAxis = false;
     private scaleYAxis = false;
@@ -164,6 +165,8 @@ export class Graph{
         minZoom: 1e-306,
         maxZoom: Number.MAX_SAFE_INTEGER,
     }
+    prevX = -1;
+    prevY = -1;
 
     private oldpt: Point | undefined;
 
@@ -179,6 +182,9 @@ export class Graph{
 
         //pointer handlers
         this.canvas.onpointerdown = (e) => {
+            this.canvas.setPointerCapture(e.pointerId);
+            this.evCache.push(e);
+            
             const pt = this.isPointOnLine(e.clientX, e.clientY);
             if (pt) {
                 this.inspecting = pt.line;
@@ -188,11 +194,13 @@ export class Graph{
             }
             else {
                 this.moving = true;
+                this.evPrevCache[e.pointerId] = e;
+                /*if (this.prevX == -1) *///this.prevX = this.evCache[0].clientX;
+                /*if (this.prevY == -1) *///this.prevY = this.evCache[0].clientY;
                 this.canvas.style.cursor = 'grabbing';
             }
             
-            this.canvas.setPointerCapture(e.pointerId);
-            this.evCache.push(e);
+            
             if (this.evCache.length === 2) {
                 if (this.isPointOnAxis(this.evCache[0].clientX, 'x') && this.isPointOnAxis(this.evCache[1].clientX, 'x')) {
                     this.scaleXAxis = true;
@@ -209,6 +217,8 @@ export class Graph{
         this.canvas.onpointerup = (e) => {
             if (this.moving) {
                 this.moving = false;
+                //this.prevX = -1;
+                //this.prevY = -1;
                 this.canvas.style.cursor = 'grab';
             }
             else if (this.inspecting) {
@@ -218,6 +228,7 @@ export class Graph{
                 if (this.oldpt) this.oldpt.selected = false;
             }
             this.canvas.releasePointerCapture(e.pointerId);
+            delete this.evPrevCache[e.pointerId];
             for (let i = 0; i < this.evCache.length; i++) {
                 if (this.evCache[i].pointerId === e.pointerId) {
                     this.evCache.splice(i, 1);
@@ -236,12 +247,18 @@ export class Graph{
             for (let i = 0; i < this.evCache.length; i++) {
                 if (e.pointerId === this.evCache[i].pointerId) {
                     this.evCache[i] = e;
+                    if (this.moving) {
+                        const movementX = this.evCache[i].clientX - this.evPrevCache[e.pointerId].clientX;//this.prevX;
+                        const movementY = this.evCache[i].clientY - this.evPrevCache[e.pointerId].clientY;//this.prevY;
+                        //console.log(`movex:${movementX},movey${movementY}`);
+                        this.move(movementX / this.evCache.length, movementY / this.evCache.length);
+                    }
                     break;
                 }
             }
+            this.evPrevCache[e.pointerId] = e;
 
             if (this.moving && this.evCache.length > 0) {
-                this.move(e.movementX / this.evCache.length, e.movementY / this.evCache.length);
             }
             else if (this.inspecting) {
                 const pt = this.findClosestPoint(e.clientX, e.clientY, this.inspecting);
@@ -328,7 +345,9 @@ export class Graph{
     }
 
     attachExpression(id: number, expression: Token[], variables: { [key: string]: number }) {
+
         const line = this.getLine(id);
+        delete line.fn;
         if (!line.worker) {
             //unfortunaly i have to use absolute adress :(
             line.worker = new Worker('/tools/graphing-calculator/js/worker.js', { type: "module" });
@@ -611,6 +630,15 @@ export class Graph{
                 const x = point.x * this.xScale - this.xOffset;
                 const y = -point.y * this.yScale + this.yOffset;
 
+                if (point.debug == 1) {
+                    this.ctx.strokeStyle = 'red';
+                    this.ctx.strokeRect(x-2, y-2, 4, 4);
+                    continue;
+                }
+                else {
+                    this.ctx.strokeStyle = line.color;
+                }
+
                 // if ((prevY < 0 || prevY > this.height) && (y < 0 || y > this.height)) {
                 //     continue;
                 // }
@@ -630,9 +658,9 @@ export class Graph{
                 if (x < -1 || x > this.width + 1 /*|| y < 0 || y > this.height*/) {
                     continue;
                 }
-                if (Math.abs(prevX - x) < 1 /*|| Math.abs(prevY - y) < 1*/) {
-                    //continue;
-                }
+                // if (Math.abs(prevX - x) < 1 /*|| Math.abs(prevY - y) < 1*/) {
+                //    continue;
+                // }
 
                 if (!point.connect) {
                     //this.ctx.beginPath();

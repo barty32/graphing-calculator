@@ -30,7 +30,7 @@ self.onmessage = (e) => {
             line.variables['x'] = i;
             let connect = true;
             try {
-                y = parser.evaluate(line.variables, line.expression).result;
+                y = parser.evaluate(line.variables, line.expression); //.result;
                 connect = true;
                 //line.variables['x'] =- dx// / line.xScale;
                 const dy = (y - prevY /*parser.evaluate(line.variables, line.expression)*/) / step;

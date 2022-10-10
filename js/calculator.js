@@ -1,8 +1,10 @@
 import { Graph } from './graph.js';
-import { ExpressionParser, ExpressionType } from './parser.js';
+import { ExpressionParser, ExpressionType, ParserFatalError, Severity } from './parser.js';
 import { AudioManager } from './audio.js';
 import DataConverter from './converter.js';
 import { sine, square, triangle } from './audio.js';
+import { MathfieldElement } from '../mathlive/dist/mathlive';
+//import type { MathfieldElement } from 'mathlive/dist/types/mathlive/mathlive';
 var LineType;
 (function (LineType) {
     LineType[LineType["expression"] = 0] = "expression";
@@ -368,12 +370,83 @@ class Line {
         row2.appendChild(errTooltip);
         row2.appendChild(warningImg);
         row2.appendChild(warnTooltip);
-        const fnInput = document.createElement('math-field'); //input
+        const fnInput = new MathfieldElement(); //document.createElement('math-field');//input
         //fnInput.type = 'text';
         fnInput.contentEditable = 'true';
         //fnInput.spellcheck = false;
         fnInput.id = `expr-input-${this.id}`;
         fnInput.classList.add('form-control');
+        //console.log(fnInput.getOptions('macros'));
+        // fnInput.setOptions({
+        //     macros: {
+        //         ...fnInput.getOptions('macros'),
+        //         and: '{#1}',
+        //     }
+        // })
+        fnInput.addEventListener('input', () => {
+            try {
+                this.expression = fnInput.getValue('ascii-math');
+                //console.log('Latex: ' + f.latex());
+                console.log('Expr: ' + this.expression);
+                this.parser.tokenize(this.expression).checkSyntax().parse();
+                console.log(this.parser.evaluate({ x: Infinity, y: Infinity, degrees: degrees ? 1 : 0 }));
+                errTooltip.innerHTML = '';
+                warnTooltip.innerHTML = '';
+                for (const err of this.parser.problems) {
+                    if (err.severity == Severity.WARNING) {
+                        warnTooltip.innerHTML += err.desc + '<br>';
+                    }
+                }
+                errorImg.style.display = 'none';
+                warningImg.style.transform = 'none';
+                warningImg.style.display = warnTooltip.innerHTML ? 'block' : 'none';
+                fnInput.style.color = warnTooltip.innerHTML ? 'orange' : 'black';
+                switch (this.parser.getExpressionType()) {
+                    case ExpressionType.FUNCTION:
+                        fnType.innerHTML = 'f(x):';
+                        break;
+                    case ExpressionType.YFUNCTION:
+                        fnType.innerHTML = 'f(y):';
+                        break;
+                    case ExpressionType.EQUATION:
+                        fnType.innerHTML = 'f(x,y):';
+                        break;
+                }
+            }
+            catch (e) {
+                if (!(e instanceof ParserFatalError)) {
+                    throw e;
+                }
+                errTooltip.innerHTML = e.message + '<br>';
+                warnTooltip.innerHTML = '';
+                for (const err of this.parser.problems) {
+                    if (err.severity >= Severity.ERROR) {
+                        errTooltip.innerHTML += err.desc + '<br>';
+                    }
+                    else if (err.severity == Severity.WARNING) {
+                        warnTooltip.innerHTML += err.desc + '<br>';
+                    }
+                }
+                errorImg.style.display = 'block';
+                warningImg.style.transform = 'translateX(-27px)';
+                warningImg.style.display = warnTooltip.innerHTML ? 'block' : 'none';
+                fnInput.style.color = errTooltip.innerHTML ? 'red' : warnTooltip.innerHTML ? 'orange' : 'black';
+                graph.draw(2);
+                return;
+            }
+            graph.attachExpression(this.id, this.parser.outputQueue, { degrees: degrees ? 1 : 0, res: Math.min(graph.xScale, graph.yScale) });
+            if (this.type == LineType.audio && this.audioData?.waveType == 'custom') {
+                // graph.attachFn(this.id, (x, y) => {
+                //     try {
+                //         return this.parser.evaluate({ x, y, degrees: degrees ? 1 : 0, res: Math.min(graph.xScale, graph.yScale) });
+                //     }
+                //     catch (e) {
+                //         return undefined;
+                //     }
+                // }, this.parser.getExpressionType());
+                this.audioDataChanged();
+            }
+        });
         //sum(?, n, 1, 10) sin((x)/(5)+2)*(1)/(4x)+ cos(4)
         //\sum _{n=1}^{10}\sin \left(\frac{x}{5}+2\right)\cdot \frac{1}{4o}+\cos \left(4\right)
         // const mf = MQ.MathField(fnInput, {
@@ -624,7 +697,7 @@ class Line {
                     if (this.playing)
                         this.toggleAudio();
                     fn = (x) => {
-                        return this.parser.evaluate({ x: x }).result;
+                        return this.parser.evaluate({ x: x }); //.result;
                     };
                     break;
                 default:
@@ -637,7 +710,7 @@ class Line {
         }
     }
 }
-const MQ = MathQuill.getInterface(2);
+//const MQ = MathQuill.getInterface(2);
 const audioMgr = new AudioManager();
 var lines = {};
 var variables = {};

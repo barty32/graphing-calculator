@@ -3,10 +3,12 @@
 <html lang="en">
 
 <head>
-    <?php includeHead() ?>
-    <link rel="stylesheet" href="mathquill/mathquill.css" />
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-    <script src="mathquill/mathquill.min.js"></script>
+    <?php includeHead(1, 1, 1, 1) ?>
+    <!-- <link rel="stylesheet" href="mathquill/mathquill.css" /> -->
+    <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script> -->
+    <!-- <script src="mathquill/mathquill.min.js"></script> -->
+    <!-- <script src="https://unpkg.com/mathlive?module" type="module" defer></script> -->
+    <!-- <script src="./mathlive/dist/mathlive.min.mjs" type="text/javascript-module" defer></script> -->
     <title><?php echo $lang['graphing.title'] ?> | barty12's webpage</title>
     <style>
         body {
@@ -497,7 +499,7 @@
 HTML); ?>
 
         <?php bootstrapModal('aboutModal', $lang['aboutmodal.title'], <<<HTML
-		<h5 style="font-weight:bold;">{$lang['graphing.title']}, <span style="font-size:1rem">{$lang['aboutmodal.version']} 1.4</span></h5> 
+		<h5 style="font-weight:bold;">{$lang['graphing.title']}, <span style="font-size:1rem">{$lang['aboutmodal.version']} 1.5</span></h5> 
 		<span>{$lang['aboutmodal.created']}: {$lang['month.june']} 2022</span><br />
 		<span>{$lang['aboutmodal.updated']}: {$lang['month.september']} 2022</span>
 		<p>© 2022 by barty12</p>

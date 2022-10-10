@@ -68,7 +68,7 @@ const functions: { [key: string]: {argc: number, fn: (args: number[]) => number 
     'max':   { argc: 2, fn: (args) => Math.max(args[0], args[1]) },
     'min':   { argc: 2, fn: (args) => Math.min(args[0], args[1]) },
     'mod':   { argc: 2, fn: (args) => ((args[0] % args[1]) + args[1]) % args[1] },
-    'fac':   { argc: 1, fn: (args) => args[0] * gamma(args[0]) },
+    'fac':   { argc: 1, fn: (args) => args[0] * gamma(args[0]) },//lim: k, k = (-inf, 0>  
     'round': { argc: 1, fn: (args) => Math.round(args[0]) },
     'trunc': { argc: 1, fn: (args) => Math.trunc(args[0]) },
     'ceil':  { argc: 1, fn: (args) => Math.ceil(args[0]) },
@@ -78,15 +78,15 @@ const functions: { [key: string]: {argc: number, fn: (args: number[]) => number 
     'add':   { argc: 2, fn: (args) => args[0] + args[1] },
     'sub':   { argc: 2, fn: (args) => args[0] - args[1] },
     'mul':   { argc: 2, fn: (args) => args[0] * args[1] },
-    'div':   { argc: 2, fn: (args) => args[0] / args[1] },
+    'div':   { argc: 2, fn: (args) => args[0] / args[1] },//arg1 == 0
     'shl':   { argc: 2, fn: (args) => args[0] << args[1] },
     'shr':   { argc: 2, fn: (args) => args[0] >> args[1] },
     'not':   { argc: 1, fn: (args) => ~args[0] },
     'and':   { argc: 2, fn: (args) => args[0] & args[1] },
     'or':    { argc: 2, fn: (args) => args[0] | args[1] },
     'xor':   { argc: 2, fn: (args) => args[0] ^ args[1] },
-    'ln':    { argc: 1, fn: (args) => Math.log(args[0]) },
-    'log':   { argc: 1, fn: (args) => Math.log10(args[0]) },
+    'ln':    { argc: 1, fn: (args) => Math.log(args[0]) },//0
+    'log':   { argc: 1, fn: (args) => Math.log10(args[0]) },//0
     'exp':   { argc: 1, fn: (args) => Math.exp(args[0]) },
     
     //special functions (they need custom implementation)
@@ -652,7 +652,7 @@ export class ExpressionParser{
         return this;
     }
 
-    evaluate(variables: { [key: string]: number }, tokens: Token[] = this.outputQueue): number{
+    evaluate(variables: { [key: string]: number }, tokens: Token[] = this.outputQueue): number/*{ result: number, asymptotes: number[] }*/{
         switch (this.getExpressionType(tokens)) {
             case ExpressionType.FUNCTION:
                 const i = tokens.findIndex(e => e.type == TokenType.EQUAL);
@@ -686,8 +686,9 @@ export class ExpressionParser{
         }
     }
 
-    private evaluateInternal(variables: { [key: string]: number }, tokens: Token[] = this.outputQueue): number {
+    private evaluateInternal(variables: { [key: string]: number }, tokens: Token[] = this.outputQueue): number/*{result: number, asymptotes: number[]}*/ {
         let tmpStack: number[] = [];
+        let asymptotes: number[] = [];
 
         for (const token of tokens) {
             switch (token.type) {
@@ -753,9 +754,17 @@ export class ExpressionParser{
                     //    break;
                     //}
 
+                    // if (token.name == 'log') {
+                    //     const vars = structuredClone(variables);
+                    //     vars['x'] = 0;
+                    //     asymptotes.push(-this.evaluateInternal(vars, token.arguments[0]).result);
+                    // }
+
                     //recursively evaluate all arguments
                     for (const arg of token.arguments) {
-                        args.push(this.evaluateInternal(variables, arg));
+                        const res = this.evaluateInternal(variables, arg);
+                        args.push(res);
+                        //asymptotes = asymptotes.concat(res.asymptotes);
                     }
 
                     //goniometric functions have one hidden argument (degrees/radians)
@@ -796,6 +805,7 @@ export class ExpressionParser{
         // this.result = tmpStack[0];
         // return this;
         return tmpStack[0];
+        //return { result: tmpStack[0], asymptotes: asymptotes };
     }
 
 

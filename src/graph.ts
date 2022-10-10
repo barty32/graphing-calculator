@@ -12,6 +12,7 @@
 
 // Done (v1.5)
 // - fixed bug with touch controls on Firefox
+// - switched to Mathlive input library
 //
 // Done (v1.4)
 // - changed icon

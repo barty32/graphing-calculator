@@ -385,11 +385,11 @@ class Line {
         // })
         fnInput.addEventListener('input', () => {
             try {
-                this.expression = fnInput.getValue('ascii-math');
-                //console.log('Latex: ' + f.latex());
+                console.log('Latex: ' + fnInput.getValue('latex-unstyled'));
+                this.expression = this.parser.latexToString(fnInput.getValue('latex-unstyled'));
                 console.log('Expr: ' + this.expression);
                 this.parser.tokenize(this.expression).checkSyntax().parse();
-                console.log(this.parser.evaluate({ x: Infinity, y: Infinity, degrees: degrees ? 1 : 0 }));
+                this.parser.evaluate({ x: 0, y: 0, degrees: degrees ? 1 : 0 });
                 errTooltip.innerHTML = '';
                 warnTooltip.innerHTML = '';
                 for (const err of this.parser.problems) {

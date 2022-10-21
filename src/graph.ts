@@ -13,6 +13,10 @@
 // Done (v1.5)
 // - fixed bug with touch controls on Firefox
 // - switched to Mathlive input library
+// - sum and prod functions are now working with fancy symbols
+// - fixed a lot of minor bugs in math parser
+// - added all trigonometric and hyberbolic functions with fn^-1 support
+// - added integrals (beta, works only in function notation int(x))
 //
 // Done (v1.4)
 // - changed icon

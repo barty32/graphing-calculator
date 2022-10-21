@@ -29,7 +29,7 @@ enum TokenType{
     LPAREN,
     RPAREN,
     COMMA,
-    EQUAL
+    //EQUAL
     //STRING
 }
 
@@ -37,96 +37,150 @@ export enum ExpressionType {
     UNKNOWN = -1,
     FUNCTION,
     YFUNCTION,
+    EQUATION,
     INEQUALITY,
     POLAR,
     POINT,
-    EQUATION
+    VARIABLE,
+    CUSTOM_FUNCTION
 }
 
 export interface Token{
     type: TokenType;
     pos: number;
     value?: number;
-    name?: string;
+    name: string;
     arguments?: Token[][];
 }
 
-const errors = {
-    empty: 'The expression is empty',
-};
+export type Variables = { [key: string]: number };
 
-const functions: { [key: string]: {argc: number, fn: (args: number[]) => number } } = {
-    'sin':   { argc: 1, fn: (args) => Math.sin(args[0] * args[1]) },
-    'cos':   { argc: 1, fn: (args) => Math.cos(args[0] * args[1]) },
-    'tan':   { argc: 1, fn: (args) => Math.tan(args[0] * args[1]) },
-    'tg':    { argc: 1, fn: (args) => Math.tan(args[0] * args[1]) },
-    'sqrt':  { argc: 1, fn: (args) => Math.sqrt(args[0]) },
-    'root':  { argc: 2, fn: (args) => Math.pow(args[0], 1 / args[1]) },
-    'power': { argc: 2, fn: (args) => Math.pow(args[0], args[1]) },
-    'pow':   { argc: 2, fn: (args) => Math.pow(args[0], args[1]) },
-    'abs':   { argc: 1, fn: (args) => Math.abs(args[0]) },
-    'max':   { argc: 2, fn: (args) => Math.max(args[0], args[1]) },
-    'min':   { argc: 2, fn: (args) => Math.min(args[0], args[1]) },
-    'mod':   { argc: 2, fn: (args) => ((args[0] % args[1]) + args[1]) % args[1] },
-    'fac':   { argc: 1, fn: (args) => args[0] * gamma(args[0]) },//lim: k, k = (-inf, 0>  
-    'round': { argc: 1, fn: (args) => Math.round(args[0]) },
-    'trunc': { argc: 1, fn: (args) => Math.trunc(args[0]) },
-    'ceil':  { argc: 1, fn: (args) => Math.ceil(args[0]) },
-    'floor': { argc: 1, fn: (args) => Math.floor(args[0]) },
-    'sign':  { argc: 1, fn: (args) => Math.sign(args[0]) },
-    'sgn':   { argc: 1, fn: (args) => Math.sign(args[0]) },
-    'add':   { argc: 2, fn: (args) => args[0] + args[1] },
-    'sub':   { argc: 2, fn: (args) => args[0] - args[1] },
-    'mul':   { argc: 2, fn: (args) => args[0] * args[1] },
-    'div':   { argc: 2, fn: (args) => args[0] / args[1] },//arg1 == 0
-    'shl':   { argc: 2, fn: (args) => args[0] << args[1] },
-    'shr':   { argc: 2, fn: (args) => args[0] >> args[1] },
-    'not':   { argc: 1, fn: (args) => ~args[0] },
-    'and':   { argc: 2, fn: (args) => args[0] & args[1] },
-    'or':    { argc: 2, fn: (args) => args[0] | args[1] },
-    'xor':   { argc: 2, fn: (args) => args[0] ^ args[1] },
-    'ln':    { argc: 1, fn: (args) => Math.log(args[0]) },//0
-    'log':   { argc: 1, fn: (args) => Math.log10(args[0]) },//0
-    'exp':   { argc: 1, fn: (args) => Math.exp(args[0]) },
+const functions: { [key: string]: {argc: number, fn: (args: number[]) => number, type: string } } = {
+    
+    //hyperbolic inverse
+    'arcsinh': { argc: 1, type: 'hyp', fn: (args) => Math.asinh(args[0] * args[1]) },
+    'asinh':   { argc: 1, type: 'hyp', fn: (args) => Math.asinh(args[0] * args[1]) },
+    'arccosh': { argc: 1, type: 'hyp', fn: (args) => Math.acosh(args[0] * args[1]) },
+    'acosh':   { argc: 1, type: 'hyp', fn: (args) => Math.acosh(args[0] * args[1]) },
+    'arctanh': { argc: 1, type: 'hyp', fn: (args) => Math.atanh(args[0] * args[1]) },
+    'arctgh':  { argc: 1, type: 'hyp', fn: (args) => Math.atanh(args[0] * args[1]) },
+    'atanh':   { argc: 1, type: 'hyp', fn: (args) => Math.atanh(args[0] * args[1]) },
+    'atgh':    { argc: 1, type: 'hyp', fn: (args) => Math.atanh(args[0] * args[1]) },
+    'arccsch': { argc: 1, type: 'hyp', fn: (args) => Math.asinh(1 / args[0] * args[1]) },
+    'acsch':   { argc: 1, type: 'hyp', fn: (args) => Math.asinh(1 / args[0] * args[1]) },
+    'arcsech': { argc: 1, type: 'hyp', fn: (args) => Math.acosh(1 / args[0] * args[1]) },
+    'asech':   { argc: 1, type: 'hyp', fn: (args) => Math.acosh(1 / args[0] * args[1]) },
+    'arccoth': { argc: 1, type: 'hyp', fn: (args) => Math.atanh(1 / args[0] * args[1]) },
+    'acoth':   { argc: 1, type: 'hyp', fn: (args) => Math.atanh(1 / args[0] * args[1]) },
+    //hyperbolic
+    'sinh':   { argc: 1, type: 'hyp', fn: (args) => Math.sinh(args[0] * args[1]) },
+    'cosh':   { argc: 1, type: 'hyp', fn: (args) => Math.cosh(args[0] * args[1]) },
+    'tanh':   { argc: 1, type: 'hyp', fn: (args) => Math.tanh(args[0] * args[1]) },
+    'tgh':    { argc: 1, type: 'hyp', fn: (args) => Math.tanh(args[0] * args[1]) },
+    'csch':   { argc: 1, type: 'hyp', fn: (args) => 1 / Math.sinh(args[0] * args[1]) },
+    'sech':   { argc: 1, type: 'hyp', fn: (args) => 1 / Math.cosh(args[0] * args[1]) },
+    'coth':   { argc: 1, type: 'hyp', fn: (args) => 1 / Math.tanh(args[0] * args[1]) },
+    
+    //trigonometric inverse
+    'arcsin': { argc: 1, type: 'trig', fn: (args) => Math.asin(args[0] * args[1]) },
+    'asin':   { argc: 1, type: 'trig', fn: (args) => Math.asin(args[0] * args[1]) },
+    'arccos': { argc: 1, type: 'trig', fn: (args) => Math.acos(args[0] * args[1]) },
+    'acos':   { argc: 1, type: 'trig', fn: (args) => Math.acos(args[0] * args[1]) },
+    'arctan': { argc: 1, type: 'trig', fn: (args) => Math.atan(args[0] * args[1]) },
+    'arctg':  { argc: 1, type: 'trig', fn: (args) => Math.atan(args[0] * args[1]) },
+    'atan':   { argc: 1, type: 'trig', fn: (args) => Math.atan(args[0] * args[1]) },
+    'atg':    { argc: 1, type: 'trig', fn: (args) => Math.atan(args[0] * args[1]) },
+    'arccsc': { argc: 1, type: 'trig', fn: (args) => Math.asin(1 / args[0] * args[1]) },
+    'acsc':   { argc: 1, type: 'trig', fn: (args) => Math.asin(1 / args[0] * args[1]) },
+    'arcsec': { argc: 1, type: 'trig', fn: (args) => Math.acos(1 / args[0] * args[1]) },
+    'asec':   { argc: 1, type: 'trig', fn: (args) => Math.acos(1 / args[0] * args[1]) },
+    'arccot': { argc: 1, type: 'trig', fn: (args) => Math.atan(1 / args[0] * args[1]) },
+    'acot':   { argc: 1, type: 'trig', fn: (args) => Math.atan(1 / args[0] * args[1]) },
+    //trigonometric
+    'sin':   { argc: 1, type: 'trig', fn: (args) => Math.sin(args[0] * args[1]) },
+    'cos':   { argc: 1, type: 'trig', fn: (args) => Math.cos(args[0] * args[1]) },
+    'tan':   { argc: 1, type: 'trig', fn: (args) => Math.tan(args[0] * args[1]) },
+    'tg':    { argc: 1, type: 'trig', fn: (args) => Math.tan(args[0] * args[1]) },
+    'csc':   { argc: 1, type: 'trig', fn: (args) => 1 / Math.sin(args[0] * args[1]) },
+    'sec':   { argc: 1, type: 'trig', fn: (args) => 1 / Math.cos(args[0] * args[1]) },
+    'cot':   { argc: 1, type: 'trig', fn: (args) => 1 / Math.tan(args[0] * args[1]) },
+
+    //arithmetic
+    'add':   { argc: 2, type: 'arith', fn: (args) => args[0] + args[1] },
+    'sub':   { argc: 2, type: 'arith', fn: (args) => args[0] - args[1] },
+    'mul':   { argc: 2, type: 'arith', fn: (args) => args[0] * args[1] },
+    'div':   { argc: 2, type: 'arith', fn: (args) => args[0] / args[1] },//arg1 == 0
+    'sqrt':  { argc: 1, type: 'arith', fn: (args) => Math.sqrt(args[0]) },
+    'root':  { argc: 2, type: 'arith', fn: (args) => Math.pow(args[0], 1 / args[1]) },
+    'power': { argc: 2, type: 'arith', fn: (args) => Math.pow(args[0], args[1]) },
+    'pow':   { argc: 2, type: 'arith', fn: (args) => Math.pow(args[0], args[1]) },
+    'ln':    { argc: 1, type: 'arith', fn: (args) => Math.log(args[0]) },//0
+    'log':   { argc: 1, type: 'arith', fn: (args) => Math.log10(args[0]) },//0
+    'exp':   { argc: 1, type: 'arith', fn: (args) => Math.exp(args[0]) },
+    'mod':   { argc: 2, type: 'stat', fn: (args) => ((args[0] % args[1]) + args[1]) % args[1] },
+
+    //binary
+    'shl':   { argc: 2, type: 'bin', fn: (args) => args[0] << args[1] },
+    'shr':   { argc: 2, type: 'bin', fn: (args) => args[0] >> args[1] },
+    'not':   { argc: 1, type: 'bin', fn: (args) => ~args[0] },
+    'and':   { argc: 2, type: 'bin', fn: (args) => args[0] & args[1] },
+    'or':    { argc: 2, type: 'bin', fn: (args) => args[0] | args[1] },
+    'xor':   { argc: 2, type: 'bin', fn: (args) => args[0] ^ args[1] },
+    
+    //statistical
+    'max':   { argc: 2, type: 'stat', fn: (args) => Math.max(args[0], args[1]) },
+    'min':   { argc: 2, type: 'stat', fn: (args) => Math.min(args[0], args[1]) },
+    'fac':   { argc: 1, type: 'stat', fn: (args) => args[0] * gamma(args[0]) },//lim: k, k = (-inf, 0>  
+
+    //piecewise
+    'abs':   { argc: 1, type: 'piece', fn: (args) => Math.abs(args[0]) },
+    'round': { argc: 1, type: 'piece', fn: (args) => Math.round(args[0]) },
+    'trunc': { argc: 1, type: 'piece', fn: (args) => Math.trunc(args[0]) },
+    'ceil':  { argc: 1, type: 'piece', fn: (args) => Math.ceil(args[0]) },
+    'floor': { argc: 1, type: 'piece', fn: (args) => Math.floor(args[0]) },
+    'sign':  { argc: 1, type: 'piece', fn: (args) => Math.sign(args[0]) },
+    'sgn':   { argc: 1, type: 'piece', fn: (args) => Math.sign(args[0]) },
     
     //special functions (they need custom implementation)
-    'sum':        { argc: 4, fn: () => 0 },
-    'prod':       { argc: 4, fn: () => 0 },
-    'derivative': { argc: 1, fn: () => 0 },
-    'der':        { argc: 1, fn: () => 0 },
-    //'integrate':  { argc: 1, fn: () => 0 },
-    //'int':        { argc: 1, fn: () => 0 }
+    'sum':        { argc: 4, type: 'spec', fn: () => 0 },
+    'prod':       { argc: 4, type: 'spec', fn: () => 0 },
+    'derivative': { argc: 1, type: 'spec', fn: () => 0 },
+    'der':        { argc: 1, type: 'spec', fn: () => 0 },
+    'integrate':  { argc: 1, type: 'spec', fn: () => 0 },
+    'int':        { argc: 1, type: 'spec', fn: () => 0 }
 };
 
 const operators: { [key: string]: { argc: number, fn: (args: number[]) => number, precedence: number, assoc: 'left' | 'right' | 'none' }} = {
-    '!':  { argc: -1, fn: functions['fac'].fn, precedence: 10, assoc: 'left' },
-    '~':  { argc: 1, fn: functions['not'].fn, precedence: 10, assoc: 'right' },
-    '\\+': { argc: 1, fn: (args) => +args[0], precedence: 10, assoc: 'right' },
-    '\\-': { argc: 1, fn: (args) => -args[0], precedence: 10, assoc: 'right' },
+    '!':  { argc: -1, fn: functions['fac'].fn, precedence: 6, assoc: 'left' },
+    '~':  { argc: 1, fn: functions['not'].fn, precedence: 6, assoc: 'right' },
+    '\\+': { argc: 1, fn: (args) => +args[0], precedence: 6, assoc: 'right' },
+    '\\-': { argc: 1, fn: (args) => -args[0], precedence: 6, assoc: 'right' },
 
-    '**':{ argc: 2, fn: functions['pow'].fn, precedence: 9, assoc: 'right' },
-    '^': { argc: 2, fn: functions['pow'].fn, precedence: 9, assoc: 'right' },
+    '**':{ argc: 2, fn: functions['pow'].fn, precedence: 5, assoc: 'right' },
+    '^': { argc: 2, fn: functions['pow'].fn, precedence: 5, assoc: 'right' },
 
-    '*': { argc: 2, fn: functions['mul'].fn, precedence: 8, assoc: 'left' },
-    '·': { argc: 2, fn: functions['mul'].fn, precedence: 8, assoc: 'left' },
-    '×': { argc: 2, fn: functions['mul'].fn, precedence: 8, assoc: 'left' },
-    '/': { argc: 2, fn: functions['div'].fn, precedence: 8, assoc: 'left' },
-    ':': { argc: 2, fn: functions['div'].fn, precedence: 8, assoc: 'left' },
-    '÷': { argc: 2, fn: functions['div'].fn, precedence: 8, assoc: 'left' },
-    '%': { argc: 2, fn: functions['mod'].fn, precedence: 8, assoc: 'left' },
+    '*': { argc: 2, fn: functions['mul'].fn, precedence: 4, assoc: 'left' },
+    '·': { argc: 2, fn: functions['mul'].fn, precedence: 4, assoc: 'left' },
+    '×': { argc: 2, fn: functions['mul'].fn, precedence: 4, assoc: 'left' },
+    '/': { argc: 2, fn: functions['div'].fn, precedence: 4, assoc: 'left' },
+    //':': { argc: 2, fn: functions['div'].fn, precedence: 4, assoc: 'left' },
+    '÷': { argc: 2, fn: functions['div'].fn, precedence: 4, assoc: 'left' },
+    '%': { argc: 2, fn: functions['mod'].fn, precedence: 4, assoc: 'left' },
 
     //function without parenthesis
 
-    '+': { argc: 2, fn: functions['add'].fn, precedence: 7, assoc: 'left' },
-    '-': { argc: 2, fn: functions['sub'].fn, precedence: 7, assoc: 'left' },
+    '+': { argc: 2, fn: functions['add'].fn, precedence: 3, assoc: 'left' },
+    '-': { argc: 2, fn: functions['sub'].fn, precedence: 3, assoc: 'left' },
 
-    //'<': { argc: 2, fn: functions['shl'].fn, precedence: 6, assoc: 'left' },
-    //'>': { argc: 2, fn: functions['shr'].fn, precedence: 6, assoc: 'left' },
-    '<<':{ argc: 2, fn: functions['shl'].fn, precedence: 6, assoc: 'left' },
-    '>>':{ argc: 2, fn: functions['shr'].fn, precedence: 6, assoc: 'left' },
+    //'<<':{ argc: 2, fn: functions['shl'].fn, precedence: 6, assoc: 'left' },
+    //'>>':{ argc: 2, fn: functions['shr'].fn, precedence: 6, assoc: 'left' },
 
-    //'&': {fn: 'and', precedence: 5, assoc: 'left', args: 2 },
-    //'|': {fn: 'or', precedence: 4, assoc: 'left', args: 2 },
+    '=':  { argc: 2, fn: () => { throw 0 }, precedence: 2, assoc: 'none' },
+    '>':  { argc: 2, fn: () => { throw 0 }, precedence: 2, assoc: 'none' },
+    '<':  { argc: 2, fn: () => { throw 0 }, precedence: 2, assoc: 'none' },
+    '>=': { argc: 2, fn: () => { throw 0 }, precedence: 2, assoc: 'none' },
+    '<=': { argc: 2, fn: () => { throw 0 }, precedence: 2, assoc: 'none' },
+    
 
     //',': { fn: '', precedence: 1, assoc: 'none' },
     //degrees
@@ -156,9 +210,6 @@ export class ExpressionParser{
     tokenStack: Token[] = [];//output of tokenize()
     outputQueue: Token[] = [];//output of parse()
     
-    result: number | null = null;
-
-
     latexToString(input: string) {
 
         input = input.replaceAll(/\\left\|/g, ' abs(');
@@ -185,18 +236,22 @@ export class ExpressionParser{
         input = input.replaceAll(/\\ge/g, '>=');
         input = input.replaceAll(/\\le/g, '<=');
 
+        //placeholders
+        input = input.replaceAll(/\\placeholder({})?/g, '?');
+
         let res = null;
+        let iter = 0;
         //these commands can be self-contained
         do {
 
             //fraction
-            input = input.replaceAll(/\\frac{([^}]*)}{([^}]*)}/g, (_, p1, p2) => `(${p1})/(${p2})`);
+            input = input.replaceAll(/\\frac{([^{}]*)}{([^{}]*)}/g, (_, p1, p2) => `(${p1})/(${p2})`);
 
             //sqrt
-            input = input.replaceAll(/\\sqrt{([^}]*)}/g, (_, p1) => ` sqrt(${p1})`);
+            input = input.replaceAll(/\\sqrt{([^{}]*)}/g, (_, p1) => ` sqrt(${p1})`);
 
             //sum, prod, coprod
-            input = input.replaceAll(/\\(sum|prod|coprod)(?:(?:_{(?:([^}=]*)=)?([^}]*)})|_.)(?:(?:\^{([^}]*)})|\^.)/g, (_, p1, p2, p3, p4) => `${p1}(?, ${p2}, ${p3}, ${p4})`);
+            input = input.replaceAll(/\\(sum|prod|coprod)(?:(?:_{(?:([^{}=]*)=)?([^{}]*)})|_(.))(?:(?:\^{([^{}]*)})|\^(.))/g, (_, p1, p2, p3, p4, p5, p6) => `${p1}(${p3 ?? p4}, ${p5 ?? p6}, ${p2 ?? ''}, `);
 
             //x+\text{test}g\cdot x
             res = /\\([a-z]*)/gi.exec(input);
@@ -204,6 +259,10 @@ export class ExpressionParser{
                 problem(0, 0, Severity.ERROR, `Unsupported LaTex command '${res[1]}'.`);
             }
             
+            iter++;
+            if (iter > 500) {
+                problem(0, 0, Severity.ERROR, `Script was stuck in a loop. This is probably a bug. Try changing syntax.`);
+            }
         } while (res);
 
         return input;
@@ -243,7 +302,7 @@ export class ExpressionParser{
         expression = expression.replace(/\s+/g, '');
 
         if (!expression.length) {
-            this.problems.push(problem(0, 0, Severity.WARNING, errors.empty));
+            this.problems.push(problem(0, 0, Severity.WARNING, 'Expression is empty.'));
             return this;
         }
 
@@ -257,12 +316,18 @@ export class ExpressionParser{
 
         let res: RegExpExecArray | null;
         let pos = 0;
+        let iter = 0;
 
         while (expression.length) {
+            iter++;
+            if (iter > 1000) {
+                problem(0, 0, Severity.ERROR, `Script was stuck in a loop. This is probably a bug. Try changing syntax.`);
+            }
+
             //match number
             res = /^(\d*)(\.)?(\d+)([eE][-+]?\d+)?/.exec(expression);//old: /^([0-9\.]+(\d*[eE]*[-+]*\d+)?)/
             if (res) {
-                this.tokenStack.push({ type: TokenType.NUMBER, value: parseFloat(res[0]), pos });
+                this.tokenStack.push({ type: TokenType.NUMBER, value: parseFloat(res[0]), name: res[0], pos });
                 pos += res[0].length;
                 expression = expression.slice(res[0].length);
                 continue;
@@ -273,7 +338,7 @@ export class ExpressionParser{
             if (res) {
                 let charStack = res[0];
                 charstackLoop: while (charStack.length) {
-                    //functions has to be sorted from longest to shortest
+                    //functions have to be sorted from longest to shortest
                     for (const fn in functions) {
                         if (charStack.search(new RegExp(`^${fn}`)) !== -1) {
                             //found function
@@ -328,18 +393,30 @@ export class ExpressionParser{
             }
 
             //match operator
-            res = /^(\*\*|[!~*·×^÷:/%+\-]|<<|>>)/.exec(expression);
+            res = /^(\*\*|>=|<=|[+\-*·×^/÷~!><%=])/.exec(expression);///^(\*\*|[!~*·×^÷:/%+\-]|<<|>>)/
             if (res) {
+                const prevLength = res[0].length;
+                //unary plus and minus
+                if ((res[0] == '-' || res[0] == '+')) {
+                    switch (this.tokenStack.at(-1)?.type) {
+                        case TokenType.NUMBER:
+                        case TokenType.VARIABLE:
+                        case TokenType.RPAREN:
+                            break;
+                        default:
+                            res[0] = '\\' + res[0];
+                    }
+                }
                 this.tokenStack.push({ type: TokenType.OPERATOR, name: res[0], pos });
-                pos += res[0].length;
-                expression = expression.slice(res[0].length);
+                pos += prevLength;
+                expression = expression.slice(prevLength);
                 continue;
             }
 
             //match left parenthesis
             res = /^(\(|\[|\{)/.exec(expression);
             if (res) {
-                this.tokenStack.push({ type: TokenType.LPAREN, pos });
+                this.tokenStack.push({ type: TokenType.LPAREN, name: res[0], pos });
                 pos += res[0].length;
                 expression = expression.slice(res[0].length);
                 continue;
@@ -348,7 +425,7 @@ export class ExpressionParser{
             //match right parenthesis
             res = /^(\)|\]|\})/.exec(expression);
             if (res) {
-                this.tokenStack.push({ type: TokenType.RPAREN, pos });
+                this.tokenStack.push({ type: TokenType.RPAREN, name: res[0], pos });
                 pos += res[0].length;
                 expression = expression.slice(res[0].length);
                 continue;
@@ -357,24 +434,26 @@ export class ExpressionParser{
             //match comma
             res = /^,/.exec(expression);
             if (res) {
-                this.tokenStack.push({ type: TokenType.COMMA, pos });
+                this.tokenStack.push({ type: TokenType.COMMA, name: res[0], pos });
                 pos += res[0].length;
                 expression = expression.slice(res[0].length);
                 continue;
             }
 
             //match equality (or inequality) sign
-            res = /^(=|[<>]=?)/.exec(expression);//^[<>]?(?![<>])=?
-            if (res) {
-                this.tokenStack.push({ type: TokenType.EQUAL, name: res[0], pos });
-                pos += res[0].length;
-                expression = expression.slice(res[0].length);
-                continue;
-            }
+            // res = /^(=|[<>]=?)/.exec(expression);//^[<>]?(?![<>])=?
+            // if (res) {
+            //     this.tokenStack.push({ type: TokenType.EQUAL, name: res[0], pos });
+            //     pos += res[0].length;
+            //     expression = expression.slice(res[0].length);
+            //     continue;
+            // }
 
             this.problems.push(problem(pos, 1, Severity.WARNING, `Illegal character '${expression[0]}', ignoring it.`));
             expression = expression.slice(1);
         }
+        //console.log('Tokenized:');
+        //console.log(this.tokenStack);
         return this;
     }
 
@@ -402,139 +481,210 @@ export class ExpressionParser{
                     }
                     break;
                 case TokenType.FUNCTION:
-                    if (nextToken?.type == TokenType.NUMBER ||
-                        nextToken?.type == TokenType.FUNCTION ||
-                        nextToken?.type == TokenType.OPERATOR ||
-                        nextToken?.type == TokenType.VARIABLE) {
-                        if (functions[token.name ?? ''].argc > 1) {
-                            this.problems.push(problem(token.pos, token.name?.length ?? 0, Severity.ERROR, `Functions with more than 1 argument require parentheses.`));
-                        }
-                        //parentheses are missing, so insert them
-                        tokens.splice(i + 1, 0, { type: TokenType.LPAREN, pos: i + 1 });
 
+                    if (token.name == 'sum' || token.name == 'prod') {
+                        let scope = 0;
+                        let commas = 0;
+                        let endPos = tokens.length;
                         for (let j = i + 2; j < tokens.length; j++) {
-                            if (!(tokens[j].type == TokenType.NUMBER ||
-                                tokens[j].type == TokenType.FUNCTION ||
-                                tokens[j].type == TokenType.VARIABLE ||
-                                tokens[j].type == TokenType.RPAREN ||
-                                (tokens[j].type == TokenType.OPERATOR &&
-                                    (operators[tokens[j].name ?? ''].precedence > operators['+'].precedence)))) {
-                                if (tokens[j].type == TokenType.OPERATOR || tokens[j].type == TokenType.RPAREN || tokens[j].type == TokenType.EQUAL) {
-                                    tokens.splice(j, 0, { type: TokenType.RPAREN, pos: j });
-                                    //decrease index and repeat
+                            if (tokens[j].type == TokenType.LPAREN) {
+                                scope++;
+                                continue;
+                            }
+                            else if (tokens[j].type == TokenType.RPAREN) {
+                                if (scope !== 0) {
+                                    scope--;
+                                    continue;
+                                }
+                                endPos = j;
+                                break;
+                            }
+                            else if (scope === 0 && tokens[j].type == TokenType.COMMA) {
+                                commas++;
+                            }
+                            else if (scope === 0 && (tokens[j].type == TokenType.OPERATOR &&
+                                operators[tokens[j].name].precedence <= operators['+'].precedence)) {
+                                endPos = j;
+                                break;
+                            }
+                        }
+                        tokens.splice(endPos, 0, { type: TokenType.RPAREN, name: ')', pos: endPos });
+                        //i--
+                        //continue tokenLoop;
+                    }
+                    //valid cases:
+                    //   sin(x)   -> sin(x)
+                    //   sin2     -> sin(2)
+                    //   sin-2    -> sin(-2)
+                    //   sinsinx  -> sin(sin(x))
+                    //   sinx     -> sin(x)
+                    //   sin^-1x  -> arcsin(x)
+                    //   sin^2x   -> sin(x)^2
+                    //   sin^-1(x)-> arcsin(x)
+                    //   sin^2(x) -> sin(x)^2
+                    //
+                    //invalid cases:
+                    //   sin
+                    //   sin)
+                    //   sin*
+                    //   sin
+                    // ...anything else
+                    // let addPow2 = false;
+                    switch (nextToken?.type) {
+                        // @ts-expect-error
+                        case TokenType.OPERATOR:
+                            if (nextToken.name == '^' && (functions[token.name].type == 'trig' || functions[token.name].type == 'hyp')) {
+                                // sin^2
+                                //if (tokens[i + 2]?.type == TokenType.NUMBER && tokens[i + 2]?.value == 2) {
+                                //    
+                                //}
+                                // sin^-1
+                                if (tokens[i + 2]?.type == TokenType.LPAREN &&
+                                    tokens[i + 3]?.type == TokenType.OPERATOR &&
+                                    tokens[i + 3]?.name == '\\-' &&
+                                    tokens[i + 4]?.type == TokenType.NUMBER &&
+                                    tokens[i + 4]?.value == 1)
+                                {
+                                    const r = /^(?:arc|a)(.*)/.exec(token.name!);
+                                    if (r) {
+                                        //arcsin^-1 -> sin
+                                        token.name = r[1];
+                                    }
+                                    else {
+                                        //sin^-1 -> arcsin
+                                        token.name = 'arc' + token.name;
+                                    }
+                                    tokens.splice(i + 1, 5);
+                                    //check if next operator is unary
+                                    // if (tokens[i + 1]?.type == TokenType.OPERATOR &&
+                                    //     tokens[i + 1].name == '+' || tokens[i + 1].name == '-')
+                                    // {
+                                    //     tokens[i + 1].name = '\\' + tokens[i + 1].name;
+                                    // }
+                                    //now repeat with modified name
                                     i--;
                                     continue tokenLoop;
                                 }
                                 else {
-                                    //throw 'add parentheses'
-                                    this.problems.push(problem(token.pos, token.name?.length ?? 0, Severity.ERROR, `Try adding parentheses to function '${token.name}'.`));
+                                    this.problems.push(problem(token.pos, 1, Severity.ERROR, `Only ${token.name}<sup>-1</sup> is supported, try adding parentheses.`));
                                 }
                             }
-                        }
-                        tokens.push({ type: TokenType.RPAREN, pos: tokens.length - 1 });
-                    }
-                    else if (nextToken?.type == TokenType.LPAREN) {
-                        //valid, do nothing
-                    }
-                    else if (!nextToken || nextToken?.type == TokenType.RPAREN) {
-                        this.problems.push(problem(token.pos, token.name?.length ?? 0, Severity.WARNING, `Expected function argument, ignoring function '${token.name}'.`));
-                    }
-                    else {
-                        this.problems.push(problem(nextToken.pos, 1, Severity.ERROR, `Invalid token '${nextToken.name}', expected '(', function name, variable or number.`));
+                            //not unary operator
+                            else if (!(operators[nextToken.name].argc === 1/*nextToken.name == '+' || nextToken.name == '-'*/)) {
+                                this.problems.push(problem(nextToken.pos, 1, Severity.ERROR, `Invalid token '${nextToken.name}', expected '(', function name, variable or number.`));
+                            }
+                            // FALLS THROUGH
+                        case TokenType.NUMBER:
+                        case TokenType.FUNCTION:
+                        case TokenType.VARIABLE:
+                            if (functions[token.name].argc > 1) {
+                                this.problems.push(problem(token.pos, token.name.length, Severity.ERROR, `Functions with more than 1 argument require parentheses.`));
+                            }
+                            //parentheses are missing, so insert them
+                            tokens.splice(i + 1, 0, { type: TokenType.LPAREN, name: '(', pos: i + 1 });
+                            let endPos = tokens.length;
+                            for (let j = i + 2; j < tokens.length; j++) {
+                                if (!(tokens[j].type == TokenType.NUMBER ||
+                                    tokens[j].type == TokenType.FUNCTION ||
+                                    tokens[j].type == TokenType.VARIABLE ||
+                                    (tokens[j].type == TokenType.OPERATOR &&
+                                    operators[tokens[j].name].precedence > operators['+'].precedence)))
+                                {
+                                    if (tokens[j].type == TokenType.OPERATOR ||
+                                        tokens[j].type == TokenType.RPAREN) {
+                                        endPos = j;
+                                        break;
+                                    }
+                                    else {
+                                        this.problems.push(problem(token.pos, token.name.length, Severity.ERROR, `Try adding parentheses to function '${token.name}'.`));
+                                    }
+                                }
+                            }
+                            tokens.splice(endPos, 0, { type: TokenType.RPAREN, name: ')', pos: endPos });
+                            i--
+                            continue tokenLoop;
+                            //console.log(tokens);
+                            //if (addPow2) {
+                            //    tokens.splice(endPos + 1, 0, { type: TokenType.OPERATOR, name: '^', pos: endPos + 1 });
+                            //    tokens.splice(endPos + 2, 0, { type: TokenType.NUMBER, name: '2', value: 2, pos: endPos + 2 });
+                            //}
+                            break;
+                        case TokenType.LPAREN:
+                            break;
+                        case TokenType.RPAREN:
+                        case undefined:
+                            this.problems.push(problem(token.pos, token.name.length, Severity.WARNING, `Expected function argument, ignoring function '${token.name}'.`));
+                            break;
+                        default:
+                            this.problems.push(problem(nextToken.pos, 1, Severity.ERROR, `Invalid token '${nextToken.name}', expected '(', function name, variable or number.`));
+
                     }
                     break;
                 case TokenType.OPERATOR:
-                    //move operators which are written after operand (such as '!')
-                    // if (operators[token.name ?? ''].argc < 0) {
-                    //     let newPos = 0;
-                    //     switch (prevToken?.type) {
-                    //         case TokenType.NUMBER:
-                    //         case TokenType.VARIABLE:
-                    //             newPos = i - 1;
-                    //             break;
-                    //         case TokenType.RPAREN:
-                    //             //look for matching parenthesis (ignoring nested scopes)
-                    //             let scope = 0;
-                    //             for (let j = i - 2; j >= 0; j--) {
-                    //                 if (tokens[j].type == TokenType.RPAREN) {
-                    //                     scope++;
-                    //                     continue;
-                    //                 }
-                    //                 else if (tokens[j].type == TokenType.LPAREN) {
-                    //                     if (scope !== 0) {
-                    //                         scope--;
-                    //                         continue;
-                    //                     }
-                    //                     newPos = j
-                    //                     break;
-                    //                 }
-                    //             }
-                    //             break;
-                    //         default:
-                    //             //throw invalid position
-                    //             this.problems.push(problem(token.pos, token.name?.length ?? 0, Severity.ERROR, `'${token.name}' is in invalid place.`));
-                    //     }
-                    //     //move it to new position
-                    //     this.tokenStack.splice(i, 1);
-                    //     this.tokenStack.splice(newPos, 0, token);
-                    //     continue;
-                    // }
+                    if (!token.name) {
+                        this.problems.push(problem(token.pos, 0, Severity.WARNING, `Unknown operator.`));
+                        continue tokenLoop;
+                    }
                     //check left-side arg
-                    if (operators[token.name ?? ''].argc !== 1) {
+                    if (operators[token.name].argc !== 1) {
                         if (!prevToken ||
                             !(prevToken.type == TokenType.NUMBER ||
                             prevToken.type == TokenType.VARIABLE ||
                             prevToken.type == TokenType.RPAREN)) {
-                            if (nextToken && (token.name == '+' || token.name == '-')) {
-                                //unary operators have \
-                                token.name = '\\' + token.name;
-                                //continue;
-                            }
-                            else {
-                                this.problems.push(problem(token.pos, token.name?.length ?? 0, Severity.WARNING, `Missing left-side argument for operator '${token.name}', ignoring it`));
-                                //tokens.splice(i, 1);
-                                //i--;
-                                // continue;
-                                token.type = TokenType.INVALID;
-                            }
+                            //if (nextToken && (token.name == '+' || token.name == '-')) {
+                            //    //unary operators have \
+                            //    token.name = '\\' + token.name;
+                            //}
+                            //else {
+                                this.problems.push(problem(token.pos, token.name.length, Severity.WARNING, `Missing left-side argument for operator '${token.name}', ignoring it`));
+                                tokens.splice(i, 1);
+                                i--;
+                                continue tokenLoop;
+                            //}
                         }
                     }
                     //check right-side arg
-                    if (operators[token.name ?? ''].argc > 0) {
+                    if (operators[token.name].argc > 0) {
                         if (!nextToken ||
                             !(nextToken.type == TokenType.NUMBER ||
                             nextToken.type == TokenType.VARIABLE ||
                             nextToken.type == TokenType.FUNCTION ||
                             nextToken.type == TokenType.OPERATOR ||
                             nextToken.type == TokenType.LPAREN)) {
-                            this.problems.push(problem(token.pos, token.name?.length ?? 0, Severity.WARNING, `Missing right-side argument for operator '${token.name}', ignoring it`));
-                            //tokens.splice(i, 1);
-                            //i--;
-                            //continue;
-                            token.type = TokenType.INVALID;
+                            this.problems.push(problem(token.pos, token.name.length, Severity.WARNING, `Missing right-side argument for operator '${token.name}', ignoring it`));
+                            tokens.splice(i, 1);
+                            i--;
                         }
                     }
                     break;
                 case TokenType.LPAREN:
-                    //checking is not necessary
-                    break;
-                case TokenType.EQUAL:
-                    if (!prevToken ||
-                        !(prevToken.type == TokenType.NUMBER ||
-                        prevToken.type == TokenType.VARIABLE ||
-                        prevToken.type == TokenType.OPERATOR ||
-                        prevToken.type == TokenType.RPAREN)) {
-                        this.problems.push(problem(token.pos, token.name?.length ?? 0, Severity.ERROR, `Left-side of '${token.name}' has invalid syntax.`));
-                    }
-                    if (!nextToken ||
-                        !(nextToken.type == TokenType.NUMBER ||
-                        nextToken.type == TokenType.VARIABLE ||
-                        nextToken.type == TokenType.FUNCTION ||
-                        nextToken.type == TokenType.OPERATOR ||
-                        nextToken.type == TokenType.LPAREN)) {
-                        this.problems.push(problem(token.pos, token.name?.length ?? 0, Severity.ERROR, `Right-side of '${token.name}' has invalid syntax.`));
+
+                    if (nextToken?.type == TokenType.RPAREN) {
+                        //empty parentheses, remove them
+
+                        tokens.splice(i, 2);
+                        //decrease index and repeat
+                        i--;
+                        continue tokenLoop;
                     }
                     break;
+                // case TokenType.EQUAL:
+                //     if (!prevToken ||
+                //         !(prevToken.type == TokenType.NUMBER ||
+                //         prevToken.type == TokenType.VARIABLE ||
+                //         prevToken.type == TokenType.OPERATOR ||
+                //         prevToken.type == TokenType.RPAREN)) {
+                //         this.problems.push(problem(token.pos, token.name?.length ?? 0, Severity.ERROR, `Left-side of '${token.name}' has invalid syntax.`));
+                //     }
+                //     if (!nextToken ||
+                //         !(nextToken.type == TokenType.NUMBER ||
+                //         nextToken.type == TokenType.VARIABLE ||
+                //         nextToken.type == TokenType.FUNCTION ||
+                //         nextToken.type == TokenType.OPERATOR ||
+                //         nextToken.type == TokenType.LPAREN)) {
+                //         this.problems.push(problem(token.pos, token.name?.length ?? 0, Severity.ERROR, `Right-side of '${token.name}' has invalid syntax.`));
+                //     }
+                //     break;
             }
 
         }
@@ -627,7 +777,7 @@ export class ExpressionParser{
                     break;
                 // else if (token.type == TokenType.COMMA) {
                 // }
-                case TokenType.EQUAL:
+                /*case TokenType.EQUAL:
                     while (operatorStack.length) {
                         const op = operatorStack.pop();
                         if (!op || op.type == TokenType.LPAREN || op.type == TokenType.RPAREN) {
@@ -637,7 +787,7 @@ export class ExpressionParser{
                         destination.push(op);
                     }
                     destination.push(token);
-                    break;
+                    break;*/
             }
         }
         while (operatorStack.length) {
@@ -652,17 +802,17 @@ export class ExpressionParser{
         return this;
     }
 
-    evaluate(variables: { [key: string]: number }, tokens: Token[] = this.outputQueue): number/*{ result: number, asymptotes: number[] }*/{
+    evaluate(variables: Variables, tokens: Token[] = this.outputQueue): number/*{ result: number, asymptotes: number[] }*/{
         switch (this.getExpressionType(tokens)) {
             case ExpressionType.FUNCTION:
-                const i = tokens.findIndex(e => e.type == TokenType.EQUAL);
+                const i = tokens.findIndex(e => e.type == TokenType.OPERATOR && e.name == '=');
                 let tok = tokens;
                 if (i > -1) {
                     tok = tokens.slice(i + 1);
                 }
                 return this.evaluateInternal(variables, tok);
             case ExpressionType.YFUNCTION:
-                const j = tokens.findIndex(e => e.type == TokenType.EQUAL);
+                const j = tokens.findIndex(e => e.type == TokenType.OPERATOR && e.name == '=');
                 let tok2 = tokens;
                 if (j > -1) {
                     tok2 = tokens.slice(j + 1);
@@ -671,7 +821,7 @@ export class ExpressionParser{
                 //delete variables['x'];
                 return this.evaluateInternal(variables, tok2);
             case ExpressionType.EQUATION:
-                const k = tokens.findIndex(e => e.type == TokenType.EQUAL);
+                const k = tokens.findIndex(e => e.type == TokenType.OPERATOR && e.name == '=');
                 if (k > -1) {
                     const left = tokens.slice(0, k);
                     const right = tokens.slice(k + 1);
@@ -686,7 +836,7 @@ export class ExpressionParser{
         }
     }
 
-    private evaluateInternal(variables: { [key: string]: number }, tokens: Token[] = this.outputQueue): number/*{result: number, asymptotes: number[]}*/ {
+    private evaluateInternal(variables: Variables, tokens: Token[] = this.outputQueue): number/*{result: number, asymptotes: number[]}*/ {
         let tmpStack: number[] = [];
         let asymptotes: number[] = [];
 
@@ -711,24 +861,26 @@ export class ExpressionParser{
 
                     //special functions
                     //sum(1/(2n-1)sin((2n-1)x),n,1,100)
+                    //triangle: $$ -\frac{8}{\pi^2}\sum_{n=1}^{10}\frac{\left(-1\right)^n}{\left(2n-1\right)^2}\operatorname{sin}\left(2\pi\left(2n-1\right)x\right) $$
+                    //sawtooth: $$ -\frac{2}{\pi}\sum_{n=1}^{10}\frac{-1^n}{n}\operatorname{sin}\left(2\pi nx\right) $$
                     //square
                     //sin(x)+1/3sin(3x)+1/5sin(5x)+1/7sin(7x)+1/9sin(9x)+1/11sin(11x)+1/13sin(13x)+1/15sin(15x)+1/17sin(17x)+1/19sin(19x)+1/21sin(21x)
                     if (token.name == 'sum' || token.name == 'prod') {
-                        const start = this.evaluateInternal(variables, token.arguments[2]);
-                        const end = this.evaluateInternal(variables, token.arguments[3]);
-                        if (token.arguments[1].length !== 1 || token.arguments[1][0].type != TokenType.VARIABLE) {
+                        const start = this.evaluateInternal(variables, token.arguments[0]);
+                        const end = this.evaluateInternal(variables, token.arguments[1]);
+                        if (token.arguments[2].length !== 1 || token.arguments[2][0].type != TokenType.VARIABLE) {
                             this.problems.push(problem(token.pos, 1, Severity.ERROR, `Second argument to '${token.name}' function must be a variable name (for example 'n').`));
                         }
-                        const variable = token.arguments[1][0].name ?? '';
+                        const variable = token.arguments[2][0].name;
 
                         let result = 0;
                         for (let i = start; i < end; i++){
                             variables[variable] = i;
                             if (token.name == 'sum') {
-                                result += this.evaluateInternal(variables, token.arguments[0]);
+                                result += this.evaluateInternal(variables, token.arguments[3]);
                             }
                             else {
-                                result *= this.evaluateInternal(variables, token.arguments[0]);
+                                result *= this.evaluateInternal(variables, token.arguments[3]);
                             }
                         }
                         tmpStack.push(result);
@@ -743,16 +895,22 @@ export class ExpressionParser{
                         tmpStack.push((y1 - y2) / dx);
                         break;
                     }
-                    //else if (token.name == 'int' || token.name == 'integrate') {
-                        //const vars = variables;
+                        //integrate(expr)
+                    else if (token.name == 'int' || token.name == 'integrate') {
+                        const vars = structuredClone(variables);
                         // const dx = 1e-6;
                         // vars['x'] -= dx;
                         // const y1 = this.evaluate(variables, token.arguments![0]);
                         // const y2 = this.evaluate(vars, token.arguments![0]);
                         // tmpStack.push((y1) * dx);
-                    //    tmpStack.push(0);
-                    //    break;
-                    //}
+                        let result = 0;
+                        for (let i = 0; i < variables['x']; i += 1 / variables['res']){
+                            vars['x'] = i;
+                            result += 1 / variables['res'] * this.evaluateInternal(vars, token.arguments[0]);
+                        }
+                       tmpStack.push(result);
+                       break;
+                    }
 
                     // if (token.name == 'log') {
                     //     const vars = structuredClone(variables);
@@ -768,7 +926,7 @@ export class ExpressionParser{
                     }
 
                     //goniometric functions have one hidden argument (degrees/radians)
-                    if (token.name == 'sin' || token.name == 'cos' || token.name == 'tan' || token.name == 'tg') {
+                    if (functions[token.name ?? ''].type == 'trig' || functions[token.name ?? ''].type == 'hyp') {
                         args.push(variables['degrees'] ? Math.PI / 180 : 1);
                     }
                     tmpStack.push(functions[token.name ?? ''].fn(args));
@@ -809,8 +967,69 @@ export class ExpressionParser{
     }
 
 
+    static evaluateJSON(input: string, variables: Variables) {
+        const obj = JSON.parse(input);
+        let tmpStack: number[] = [];
+
+        if (!Array.isArray(obj)) {
+            throw 0;
+        }
+
+        for (const item of obj) {
+
+            let type = 'unknown';
+            if (typeof item == 'number') {
+                type = 'number'
+            }
+            else if (typeof item == 'object' && typeof item?.num == 'string') {
+                type = 'numberAsObject';
+            }
+            else if (typeof item == 'string') {
+                if (item[0] === "'") {
+                    if (item.at(-1) === "'") {
+                        type = 'string';
+                    }
+                    else {
+                        type = 'stringInvalid';
+                    }
+                }
+                else {
+                    type = 'symbol';
+                }
+            }
+            else if (Array.isArray(item) && item.length) {
+                type = 'function';
+            }
+            else if (typeof item == 'object') {
+                if (typeof item?.num == 'string') {
+                    type = 'numberAsObject';
+                }
+                else if (typeof item?.sym == 'string') {
+                    type = 'symbolAsObject';
+                }
+                else if (Array.isArray(item?.fn)) {
+                    type = 'functionAsObject';
+                }
+                else if (typeof item?.str == 'string') {
+                    type = 'stringAsObject';
+                }
+                else if (typeof item?.dict == 'object') {
+                    type = 'functionAsObject';
+                }
+                else {
+                    type = 'invalidObject';
+                }
+            }
+            else {
+                'invalid';
+            }
+            console.log(type);
+        }
+    }
+
+
     getExpressionType(tokens: Token[] = this.outputQueue): ExpressionType {
-        const i = tokens.findIndex(e => e.type == TokenType.EQUAL);
+        const i = tokens.findIndex(e => e.type == TokenType.OPERATOR && operators[e.name].precedence == operators['='].precedence);///^(<|>|<=|>=|=)/.test(e.name)
         if (i > -1) {
             if (tokens[i].name != '=') {
                 return ExpressionType.INEQUALITY;
@@ -825,6 +1044,10 @@ export class ExpressionParser{
                     //function x in terms of y
                     return ExpressionType.YFUNCTION;
                 }
+                return ExpressionType.VARIABLE;
+            }
+            else if (left.length == 1 && left[0].type == TokenType.FUNCTION) {
+                return ExpressionType.CUSTOM_FUNCTION;
             }
             //generic equation
             return ExpressionType.EQUATION;

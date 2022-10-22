@@ -83,12 +83,12 @@
 //
 
 
-type GraphFn = (x: number, y: number) => (number | undefined);
+//type GraphFn = (x: number, y: number) => (number | undefined);
 
-import { ExpressionType, Token } from './parser.js';
+//import { ExpressionType, Token } from './parser.js';
 
 interface LineParams {
-    fn?: GraphFn;   //callback function for drawing
+    //fn?: GraphFn;   //callback function for drawing
     color: string; //rendered color of the line
     id: number;    //line id (must be unique)
     name: string;  //name which is displayed in tooltip
@@ -96,11 +96,11 @@ interface LineParams {
     //xRes: number;  //horizontal line resolution
     //yRes: number;  //vertical line resolution (not implemented)
     points: Point[];
-    type: ExpressionType;
-    worker?: Worker;
-    variables?: { [key: string]: number };
-    expression?: Token[];
-    calculating: boolean;
+    //type: ExpressionType;
+    //worker?: Worker;
+    //variables?: { [key: string]: number };
+    //expression?: Token[];
+    //calculating: boolean;
 }
 
 export interface Point {
@@ -111,31 +111,7 @@ export interface Point {
     debug: number;
 }
 
-
-export interface IWorkerSendData {
-    expression: Token[];
-    width: number;
-    height: number;
-    xOffset: number;
-    yOffset: number;
-    xScale: number;
-    yScale: number;
-    ID: number;
-    recalculate: number;
-    variables: { [key: string]: number };
-}
-
-export interface IWorkerReceiveData{
-    ID: number;
-    points: Point[];
-    finished: boolean;
-}
-
-//API version 2.0
-//changes in 2.0:
-// 1. addLine, getLine and removeLine API now uses a new ID based system
-// 2. lines member variable is now not array
-export class Graph{
+export class Graph {
 
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
@@ -144,7 +120,7 @@ export class Graph{
     private moving = false;
     private inspecting: LineParams | undefined;
     private evCache: PointerEvent[] = [];
-    private evPrevCache: {[pointerId: number]: PointerEvent} = {};
+    private evPrevCache: { [pointerId: number]: PointerEvent } = {};
     private lastDistance = -1;
     private scaleXAxis = false;
     private scaleYAxis = false;
@@ -156,6 +132,7 @@ export class Graph{
     xScale = 100;
     yScale = 100;
     scrollSensitivity = 1.2;
+    onRequestData: () => void = () => { };
     options = {
         grid: true,
         minorGrid: true,
@@ -179,120 +156,16 @@ export class Graph{
         this.canvas = canvas;
         this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;//TODO: check for null
         this.ctx.translate(0.5, 0.5);
-        this.canvas.width  = this.width = this.canvas.clientWidth;
+        this.canvas.width = this.width = this.canvas.clientWidth;
         this.canvas.height = this.height = this.canvas.clientHeight;
         this.xOffset = -this.width / 2;
         this.yOffset = this.height / 2;
         this.canvas.style.cursor = 'grab';
 
         //pointer handlers
-        this.canvas.onpointerdown = (e) => {
-            this.canvas.setPointerCapture(e.pointerId);
-            this.evCache.push(e);
-            
-            const pt = this.isPointOnLine(e.clientX, e.clientY);
-            if (pt) {
-                this.inspecting = pt.line;
-                pt.point.selected = true;
-                this.oldpt = pt.point;
-                this.draw();
-            }
-            else {
-                this.moving = true;
-                this.evPrevCache[e.pointerId] = e;
-                /*if (this.prevX == -1) *///this.prevX = this.evCache[0].clientX;
-                /*if (this.prevY == -1) *///this.prevY = this.evCache[0].clientY;
-                this.canvas.style.cursor = 'grabbing';
-            }
-            
-            
-            if (this.evCache.length === 2) {
-                if (this.isPointOnAxis(this.evCache[0].clientX, 'x') && this.isPointOnAxis(this.evCache[1].clientX, 'x')) {
-                    this.scaleXAxis = true;
-                } else {
-                    this.scaleXAxis = false;
-                }
-                if (this.isPointOnAxis(this.evCache[0].clientY, 'y') && this.isPointOnAxis(this.evCache[1].clientY, 'y')) {
-                    this.scaleYAxis = true;
-                } else {
-                    this.scaleYAxis = false;
-                }
-            }
-        };
-        this.canvas.onpointerup = (e) => {
-            if (this.moving) {
-                this.moving = false;
-                //this.prevX = -1;
-                //this.prevY = -1;
-                this.canvas.style.cursor = 'grab';
-            }
-            else if (this.inspecting) {
-                this.inspecting = undefined;
-                const pt = this.isPointOnLine(e.clientX, e.clientY)?.point;
-                if (pt) pt.selected = false;
-                if (this.oldpt) this.oldpt.selected = false;
-            }
-            this.canvas.releasePointerCapture(e.pointerId);
-            delete this.evPrevCache[e.pointerId];
-            for (let i = 0; i < this.evCache.length; i++) {
-                if (this.evCache[i].pointerId === e.pointerId) {
-                    this.evCache.splice(i, 1);
-                    break;
-                }
-            }
-            if (this.evCache.length < 2) {
-                this.lastDistance = -1;
-                this.scaleXAxis = false;
-                this.scaleYAxis = false;
-                this.draw();
-            }
-        };
-        this.canvas.onpointermove = (e) => {
-            
-            for (let i = 0; i < this.evCache.length; i++) {
-                if (e.pointerId === this.evCache[i].pointerId) {
-                    this.evCache[i] = e;
-                    if (this.moving) {
-                        const movementX = this.evCache[i].clientX - this.evPrevCache[e.pointerId].clientX;//this.prevX;
-                        const movementY = this.evCache[i].clientY - this.evPrevCache[e.pointerId].clientY;//this.prevY;
-                        //console.log(`movex:${movementX},movey${movementY}`);
-                        this.move(movementX / this.evCache.length, movementY / this.evCache.length);
-                    }
-                    break;
-                }
-            }
-            this.evPrevCache[e.pointerId] = e;
-
-            if (this.moving && this.evCache.length > 0) {
-            }
-            else if (this.inspecting) {
-                const pt = this.findClosestPoint(e.clientX, e.clientY, this.inspecting);
-                if (pt) {
-                    if (this.oldpt) this.oldpt.selected = false;
-                    this.oldpt = pt;
-                    pt.selected = true;
-                    this.draw();
-                }
-            }
-            else {
-                if (this.isPointOnLine(e.clientX, e.clientY)) {
-                    this.canvas.style.cursor = 'crosshair';
-                } else {
-                    this.canvas.style.cursor = 'grab';
-                }
-            }
-
-            if (this.evCache.length === 2) {
-                // Calculate the distance between the two pointers
-                const curDist = this.getTouchDistance(this.evCache[0].clientX, this.evCache[0].clientY, this.evCache[1].clientX, this.evCache[1].clientY);
-
-                if (this.lastDistance > 0) {
-                    const center = this.getTouchCenter(this.evCache[0].clientX, this.evCache[0].clientY, this.evCache[1].clientX, this.evCache[1].clientY);
-                    this.zoom(curDist, center.x, center.y, this.scaleXAxis, this.scaleYAxis, true);
-                }
-                this.lastDistance = curDist;
-            }
-        };
+        this.canvas.onpointerdown = this.onPointerDown;
+        this.canvas.onpointerup = this.onPointerUp;
+        this.canvas.onpointermove = this.onPointerMove;
         this.canvas.addEventListener('wheel', (e) => {
             e.stopPropagation();
             e.preventDefault();
@@ -329,12 +202,12 @@ export class Graph{
      */
     addLine(name: string, color: string = 'red') {
         const lineID = ++this.idCounter;
-        this.lines[lineID] = { color, id: lineID, name, on: true, points: [], type: ExpressionType.UNKNOWN, calculating: false };
+        this.lines[lineID] = { color, id: lineID, name, on: true, points: [] };
         return lineID;
     }
 
     removeLine(id: number) {
-        this.lines[id] = undefined;
+        delete this.lines[id];
     }
 
     getLine(id: number): LineParams {
@@ -343,55 +216,7 @@ export class Graph{
         return line;
     }
 
-    attachFn(id: number, fn: GraphFn, type: ExpressionType) {
-        this.getLine(id).fn = fn;
-        this.getLine(id).type = type;
-        this.calculate(2);
-    }
-
-    attachExpression(id: number, expression: Token[], variables: { [key: string]: number }) {
-
-        const line = this.getLine(id);
-        delete line.fn;
-        if (!line.worker) {
-            //unfortunaly i have to use absolute adress :(
-            line.worker = new Worker('/tools/graphing-calculator/js/worker.js', { type: "module" });
-            line.worker.onmessage = (e) => {
-                const recvline = e.data as IWorkerReceiveData;
-                if (recvline.finished) {
-                    line.calculating = false;
-                }
-                this.getLine(recvline.ID).points = recvline.points;
-                this.draw();
-            }
-
-            line.worker.onerror = (error) => {
-                console.error(`Worker error: ${error.message}`);
-                throw error;
-            };
-        }
-        line.expression = expression;
-        line.variables = variables;
-
-        this.calculate(2);
-
-        // const data: IWorkerSendData = {
-        //     expression,
-        //     width: this.width,
-        //     height: this.height,
-        //     xOffset: this.xOffset,
-        //     yOffset: this.yOffset,
-        //     xScale: this.xScale,
-        //     yScale: this.yScale,
-        //     ID: id,
-        //     variables
-        // }
-        // worker.postMessage(data);
-    }
-
-    attachArray(id: number, array: Point[]) {
-        delete this.getLine(id).fn;
-        this.getLine(id).type = ExpressionType.UNKNOWN;
+    attachData(id: number, array: Point[]) {
         this.getLine(id).points = array;
         this.draw();
     }
@@ -428,7 +253,7 @@ export class Graph{
             for (const pt of line.points) {
                 if (pt.x === undefined || pt.y === undefined) continue;
                 if (Math.abs(pt.x - x) < dx && Math.abs(pt.y - y) < dy) {
-                    return {point: pt, line: line};
+                    return { point: pt, line: line };
                 }
             }
         }
@@ -441,7 +266,7 @@ export class Graph{
         let leastDist = Infinity;
         let leastPt = undefined;
         for (const pt of line.points) {
-            const dist = Math.abs(pt.x - x);//Math.sqrt(Math.abs(pt.x - x) ** 2 + Math.abs(pt.y - y) ** 2);
+            const dist = Math.abs((pt.x ?? Infinity) - x);//Math.sqrt(Math.abs(pt.x - x) ** 2 + Math.abs(pt.y - y) ** 2);
             if (dist < leastDist) {
                 leastDist = dist;
                 leastPt = pt;
@@ -464,7 +289,7 @@ export class Graph{
         const startx = Math.floor(this.xOffset / this.xScale / xGrid.scale) * xGrid.scale;
         const starty = -Math.floor(this.yOffset / this.yScale / -yGrid.scale) * yGrid.scale;
 
-        for (let i = gridOffsetX, k = 0; i < this.width; i += tileWidth, k++){
+        for (let i = gridOffsetX, k = 0; i < this.width; i += tileWidth, k++) {
             this.ctx.beginPath();
             this.ctx.rect(i, 0, 2, this.height);
             this.ctx.fill();
@@ -483,7 +308,7 @@ export class Graph{
                 this.drawNumber(this.convert(startx + k * xGrid.scale), i, textPos, false);
             }
         }
-        for (let i = gridOffsetY, k = 0; i < this.height; i += tileHeight, k++){
+        for (let i = gridOffsetY, k = 0; i < this.height; i += tileHeight, k++) {
             this.ctx.beginPath();
             this.ctx.rect(0, i, this.width, 2);
             this.ctx.fill();
@@ -526,7 +351,7 @@ export class Graph{
         else if (base > 2) base = 5;
         else if (base > 1) base = 2;
         else base = 1;
-        return {scale: base * (10 ** i), base: base};
+        return { scale: base * (10 ** i), base: base };
     }
 
     private getGridOffset(offset: number, tileSize: number) {
@@ -599,7 +424,116 @@ export class Graph{
         return str;
     }
 
-    draw(calculateLines = 0) {
+    private onPointerDown(e: PointerEvent) {
+        this.canvas.setPointerCapture(e.pointerId);
+        this.evCache.push(e);
+
+        const pt = this.isPointOnLine(e.clientX, e.clientY);
+        if (pt) {
+            this.inspecting = pt.line;
+            pt.point.selected = true;
+            this.oldpt = pt.point;
+            this.draw();
+        }
+        else {
+            this.moving = true;
+            this.evPrevCache[e.pointerId] = e;
+            /*if (this.prevX == -1) *///this.prevX = this.evCache[0].clientX;
+            /*if (this.prevY == -1) *///this.prevY = this.evCache[0].clientY;
+            this.canvas.style.cursor = 'grabbing';
+        }
+
+
+        if (this.evCache.length === 2) {
+            if (this.isPointOnAxis(this.evCache[0].clientX, 'x') && this.isPointOnAxis(this.evCache[1].clientX, 'x')) {
+                this.scaleXAxis = true;
+            } else {
+                this.scaleXAxis = false;
+            }
+            if (this.isPointOnAxis(this.evCache[0].clientY, 'y') && this.isPointOnAxis(this.evCache[1].clientY, 'y')) {
+                this.scaleYAxis = true;
+            } else {
+                this.scaleYAxis = false;
+            }
+        }
+    }
+
+    private onPointerUp(e: PointerEvent) {
+        if (this.moving) {
+            this.moving = false;
+            //this.prevX = -1;
+            //this.prevY = -1;
+            this.canvas.style.cursor = 'grab';
+        }
+        else if (this.inspecting) {
+            this.inspecting = undefined;
+            const pt = this.isPointOnLine(e.clientX, e.clientY)?.point;
+            if (pt) pt.selected = false;
+            if (this.oldpt) this.oldpt.selected = false;
+        }
+        this.canvas.releasePointerCapture(e.pointerId);
+        delete this.evPrevCache[e.pointerId];
+        for (let i = 0; i < this.evCache.length; i++) {
+            if (this.evCache[i].pointerId === e.pointerId) {
+                this.evCache.splice(i, 1);
+                break;
+            }
+        }
+        if (this.evCache.length < 2) {
+            this.lastDistance = -1;
+            this.scaleXAxis = false;
+            this.scaleYAxis = false;
+            this.draw();
+        }
+    }
+
+    private onPointerMove(e: PointerEvent) {
+        for (let i = 0; i < this.evCache.length; i++) {
+            if (e.pointerId === this.evCache[i].pointerId) {
+                this.evCache[i] = e;
+                if (this.moving) {
+                    const movementX = this.evCache[i].clientX - this.evPrevCache[e.pointerId].clientX;//this.prevX;
+                    const movementY = this.evCache[i].clientY - this.evPrevCache[e.pointerId].clientY;//this.prevY;
+                    //console.log(`movex:${movementX},movey${movementY}`);
+                    this.move(movementX / this.evCache.length, movementY / this.evCache.length);
+                }
+                break;
+            }
+        }
+        this.evPrevCache[e.pointerId] = e;
+
+        if (this.moving && this.evCache.length > 0) {
+        }
+        else if (this.inspecting) {
+            const pt = this.findClosestPoint(e.clientX, e.clientY, this.inspecting);
+            if (pt) {
+                if (this.oldpt) this.oldpt.selected = false;
+                this.oldpt = pt;
+                pt.selected = true;
+                this.draw();
+            }
+        }
+        else {
+            if (this.isPointOnLine(e.clientX, e.clientY)) {
+                this.canvas.style.cursor = 'crosshair';
+            } else {
+                this.canvas.style.cursor = 'grab';
+            }
+        }
+
+        if (this.evCache.length === 2) {
+            // Calculate the distance between the two pointers
+            const curDist = this.getTouchDistance(this.evCache[0].clientX, this.evCache[0].clientY, this.evCache[1].clientX, this.evCache[1].clientY);
+
+            if (this.lastDistance > 0) {
+                const center = this.getTouchCenter(this.evCache[0].clientX, this.evCache[0].clientY, this.evCache[1].clientX, this.evCache[1].clientY);
+                this.zoom(curDist, center.x, center.y, this.scaleXAxis, this.scaleYAxis, true);
+            }
+            this.lastDistance = curDist;
+        }
+    }
+
+    draw(requestRecalculation = false) {
         const oldFill = this.ctx.fillStyle;
         this.ctx.fillStyle = this.options.background;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -608,8 +542,8 @@ export class Graph{
         
         this.drawAxes();
 
-        if (calculateLines) {
-            this.calculate(calculateLines);
+        if (requestRecalculation) {
+            this.onRequestData();
         } else {
             this.drawLines();
         }
@@ -690,136 +624,11 @@ export class Graph{
         }
     }
 
-    private async calculate(recalculate: number) {
-
-        //const int = setInterval(async () => {
-        //    console.log('waiting');
-        //    await new Promise(r => setTimeout(r, 2));
-        //    
-        //    this.draw();
-        //}, 1);
-        //let time = 0;
-
-        for (const lineKey in this.lines) {
-            const line = this.lines[lineKey];
-            if (!line || !line.on/* || !line.fn*/) continue;
-
-            if (line.fn) {
-                line.points = [];
-                if (line.type == ExpressionType.FUNCTION) {
-                const start = (this.xOffset / this.xScale);
-                const end = ((this.xOffset + this.width) / this.xScale);
-                //console.log('Start: ' + start + ', End: ' + end);
-
-                //let prevY = line.fn(start, NaN);
-                //let prevVal = 0
-
-                for (let i = start, k = 0; i < end; i += 1 / this.xScale, k++) {
-                    const y = line.fn(i, NaN);
-                    //const prevVal = Math.sin(i - 1 / this.xScale) + Math.sin(2 * i - 1 / this.xScale) + Math.sin(3 * i - 1 / this.xScale) + 2.5;
-                    //const val = Math.sin(i) + Math.sin(2 * i) + Math.sin(3 * i) + 2.5;
-
-                    //const y = (val - prevVal)* this.xScale;
-                    //prevVal = y;
-
-                    // if (line.points[i] !== undefined) {
-                    //     continue;
-                    // }
-                    //const dt = Math.abs(y - line.fn(i - 1 / this.xScale, NaN)) / (1 / this.xScale);
-                    //console.log(`x: ${i}, derivative: ${dt}`);
-
-                    //const delta = Math.abs(prevY - y);
-                    //let connect = Math.abs(dt) > 50 ? false : true;//1 * this.xScale
-                
-                    // if (dt > 1 / this.xScale) {
-                    //     //console.log(`delta is ${delta}, i: ${i}`);
-                    //     //debug = 1;
-                    //     // for (let j = i - 0.0005; j < i; j += 0.0005 / delta) {
-                    //     //     line.points.push({ x: i, y: j, connect: true });
-                    //     // }
-                    //     const count = Math.floor(dt * this.xScale);
-                    //     if (count < this.height) {
-                    //         //console.log(count);
-                    //         const step = 1 / count;
-                    //         for (let j = 1; j < count; j++) {
-                    //             const tx = i - (1 / this.xScale) + j * step;
-                    //             line.points.push({ x: tx, y: line.fn(tx), connect: false, selected: false, debug: 2 });
-                    //         }
-                    //     }
-                    // }
-
-                    line.points.push({ x: i, y, connect: true, selected: false, debug: 0 });
-
-                    // if (performance.now() - time > 2) {
-                    //     console.log('waiting');
-                    //     await new Promise(r => setTimeout(r, 2));
-                    //     //line.points.sort((a, b) => a.x - b.x);
-                    //     this.draw();
-                    //     time = performance.now();
-                    //     //k = 0;
-                    // }
-                    //prevY = y;
-                    }
-                    //line.points.sort((a, b) => a.x - b.x);
-                }
-                else if (line.type == ExpressionType.YFUNCTION) {
-                    const start = (this.yOffset / this.yScale);
-                    const end = ((this.yOffset - this.height) / this.yScale);
-                    for (let i = start; i >= end; i -= 1 / this.yScale) {
-                        const x = line.fn(NaN, i);
-                        line.points.push({ x, y: i, connect: true, selected: false, debug: 0 });
-                    }
-                }
-                else if (line.type == ExpressionType.EQUATION) {
-                    const startx = (this.xOffset / this.xScale);
-                    const endx = ((this.xOffset + this.width) / this.xScale);
-                    const starty = (this.yOffset / this.yScale);
-                    const endy = ((this.yOffset - this.height) / this.yScale);
-                    for (let i = startx; i < endx; i += 1 / this.xScale) {
-                        for (let j = starty; j >= endy; j -= 1 / this.yScale) {
-                            if (line.fn(i, j) == 1) {
-                                line.points.push({ x: i, y: j, connect: false, selected: false, debug: 0 });
-                            }
-                        }//x^2+y^2=4
-                        //await new Promise(r => setTimeout(r, 1));
-                        //this.draw();
-                    }
-                }
-                this.draw();
-                return;
-            }
-
-            //let prevY = 0;
-            //line.points = [];
-
-            if (line.worker && !line.calculating) {
-                const data: IWorkerSendData = {
-                    expression: line.expression ?? [],
-                    width: this.width,
-                    height: this.height,
-                    xOffset: this.xOffset,
-                    yOffset: this.yOffset,
-                    xScale: this.xScale,
-                    yScale: this.yScale,
-                    ID: line.id,
-                    recalculate,
-                    variables: line.variables ?? {}
-                }
-                line.calculating = true;
-                line.worker.postMessage(data);
-            }
-            
-        }
-        //clearInterval(int);
-
-        this.draw();
-    }
-
     private move(x: number, y: number) {
         this.xOffset += -x;
         this.yOffset += y;
         //console.log(`Xoffset: ${this.xOffset}, YOffset: ${this.yOffset}`);
-        this.draw(1);
+        this.draw(true);
     }
 
     private zoom(delta: number, x: number, y: number, ctrl = false, shift = false, touch = false) {
@@ -847,7 +656,7 @@ export class Graph{
                 this.yOffset = y - (y - this.yOffset) * scale;
             }
         }
-        this.draw(2);
+        this.draw(true);
         //console.log(`Xscale: ${this.xScale}, YScale: ${this.yScale}, x: ${x}, y: ${y}, gridx: ${this.getGridScale(this.xScale).scale}`);
     }
 
@@ -856,7 +665,7 @@ export class Graph{
         this.yOffset = this.height / 2;
         this.xScale = 100;
         this.yScale = 100;
-        this.draw(2);
+        this.draw(true);
     }
 
     fixSize() {

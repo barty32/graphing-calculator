@@ -163,9 +163,9 @@ export class Graph {
         this.canvas.style.cursor = 'grab';
 
         //pointer handlers
-        this.canvas.onpointerdown = this.onPointerDown;
-        this.canvas.onpointerup = this.onPointerUp;
-        this.canvas.onpointermove = this.onPointerMove;
+        this.canvas.onpointerdown = (e) => this.onPointerDown(e);
+        this.canvas.onpointerup = (e) => this.onPointerUp(e);
+        this.canvas.onpointermove = (e) => this.onPointerMove(e);
         this.canvas.addEventListener('wheel', (e) => {
             e.stopPropagation();
             e.preventDefault();
@@ -544,9 +544,8 @@ export class Graph {
 
         if (requestRecalculation) {
             this.onRequestData();
-        } else {
-            this.drawLines();
         }
+        this.drawLines();
         
         this.ctx.fillStyle = oldFill;
     }

@@ -568,6 +568,13 @@ export class Graph {
                 const x = point.x * this.xScale - this.xOffset;
                 const y = -point.y * this.yScale + this.yOffset;
 
+                if (x < -1 || x > this.width + 1 /*|| y < 0 || y > this.height*/) {
+                    continue;
+                }
+                if (Math.abs(prevX - x) < 1 /*|| Math.abs(prevY - y) < 1*/) {
+                    continue;
+                }
+
                 if (point.debug == 1) {
                     this.ctx.strokeStyle = 'red';
                     this.ctx.strokeRect(x-2, y-2, 4, 4);

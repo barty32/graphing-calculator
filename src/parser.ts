@@ -65,6 +65,11 @@ export type Functions = { [key: string]: { args: string[], fn: Token[] } };
 
 const functions: { [key: string]: {argc: number, fn: (args: number[]) => number, type: string } } = {
     
+    //audio functions
+    'sine':     { argc: 5, type: 'aud', fn: (args) => sine(args[0], args[1], args[2], args[3], args[4]) },
+    'square':   { argc: 6, type: 'aud', fn: (args) => square(args[0], args[1], args[2], args[3], args[4], args[5]) },
+    'triangle': { argc: 6, type: 'aud', fn: (args) => triangle(args[0], args[1], args[2], args[3], args[4], args[5]) },
+
     //hyperbolic inverse
     'arcsinh': { argc: 1, type: 'hyp', fn: (args) => Math.asinh(args[0] * args[1]) },
     'asinh':   { argc: 1, type: 'hyp', fn: (args) => Math.asinh(args[0] * args[1]) },
@@ -1228,3 +1233,27 @@ const gamma = (z: number): number => {
         return Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x;
     }
 };
+
+
+export function sine(x: number, frequency: number, amplitude: number, phase: number, bias: number) {
+    return amplitude / 100 * Math.sin(frequency * x / 1000 * 2 * Math.PI - phase / 180 * Math.PI);
+}
+
+export function square(x: number, frequency: number, amplitude: number, duty: number, phase: number, bias: number) {
+    return amplitude / 100 * (mod(frequency * x / 1000 - phase / 360, 1) < (duty / 100) ? 1 : -1);
+}
+
+export function triangle(x: number, frequency: number, amplitude: number, skew: number, phase: number, bias: number) {
+    amplitude /= 50;
+    skew /= 100;
+    const period = 1000 / frequency;
+    x -= phase / 360 * period;
+    x += skew * period / 2;
+    x = mod(x, period);
+    const freq = (frequency * x / 1000) * 2;
+    return (x < skew * period ? mod(freq / (2 * skew), 1) : mod(-(freq - 2 * skew) / (2 * (1 - skew)), 1)) * amplitude - amplitude / 2;
+}
+
+function mod(x: number, m: number) {
+    return ((x % m) + m) % m;
+}

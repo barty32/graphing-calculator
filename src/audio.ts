@@ -46,10 +46,13 @@ export class AudioManager {
         // })
     }
 
-    addNode(id: number, data: AudioSpec, fn?: AudioFn) {
+    addNode(id: number, data: AudioSpec, fn?: AudioFn, buffer?: ArrayBuffer) {
 
         if (data.waveType == 'custom') {
             this.createCustomWave(id, data, fn ?? (() => 0));
+        }
+        else if (data.waveType == 'file') {
+            if(buffer) this.createWaveFromFile(id, data, buffer);
         }
         else {
             this.workletNode?.port.postMessage({
@@ -66,10 +69,11 @@ export class AudioManager {
             message: Msg.removeNode,
             id: id
         });
+        delete this.customNodes[id];
     }
 
     startNode(id: number, onended?: ((ev: Event) => any)) {
-        if (this.customNodes[id]?.params.waveType == 'custom') {
+        if (this.customNodes[id]?.params.waveType == 'custom' || this.customNodes[id]?.params.waveType == 'file') {
             this.startCustomWave(id, onended);
         }
         else {
@@ -83,7 +87,7 @@ export class AudioManager {
     }
 
     stopNode(id: number) {
-        if (this.customNodes[id]?.params.waveType == 'custom') {
+        if (this.customNodes[id]?.params.waveType == 'custom' || this.customNodes[id]?.params.waveType == 'file') {
             this.customNodes[id]?.bufferNode?.stop();
         }
         else {
@@ -98,11 +102,10 @@ export class AudioManager {
         }
     }
 
-    createCustomWave(id: number, params: AudioSpec, fn: AudioFn) {
+    private createCustomWave(id: number, params: AudioSpec, fn: AudioFn) {
 
         const buffer = new AudioBuffer({ length: this.audioCtx.sampleRate * (params.end - params.start), numberOfChannels: 1, sampleRate: this.audioCtx.sampleRate });
         let rawArray = buffer.getChannelData(0);
-        console.log(params.start);
         for (let i = 0; i < buffer.length; i++) {
             rawArray[i] = fn((i / this.audioCtx.sampleRate + params.start) * 1000) ?? 0;
         }
@@ -114,11 +117,31 @@ export class AudioManager {
         };
     }
 
-    startCustomWave(id: number, onended?: ((ev: Event) => any)) {
+    private async createWaveFromFile(id: number, params: AudioSpec, data: ArrayBuffer) {
+        const node: AudioNode = {
+            fn: () => 0,
+            audioBuffer: null,
+            bufferNode: null,
+            params
+        }
+
+        await this.audioCtx.decodeAudioData(data).then((decodedData) => {
+            node.audioBuffer = decodedData;
+            this.customNodes[id] = node;
+        }).catch((reason) => {
+            throw new Error(reason);
+        });
+    }
+
+    private startCustomWave(id: number, onended?: ((ev: Event) => any)) {
         const node = this.customNodes[id];
         if (!node) return;
 
         node.bufferNode = new AudioBufferSourceNode(this.audioCtx, { buffer: node.audioBuffer, loop: node.params.loop });
+        if (node.params.waveType == 'file') {
+            node.bufferNode.loopStart = node.params.start;
+            node.bufferNode.loopEnd = node.params.end;
+        }
         node.bufferNode.connect(this.audioCtx.destination);
         node.bufferNode.onended = onended ?? null;
         node.bufferNode.start();

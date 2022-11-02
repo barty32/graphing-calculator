@@ -66,6 +66,28 @@
         /* animation-direction: reverse; */
         /*}*/
 
+        .small-input {
+            width: 100%;
+            min-width: 30px;
+            max-width: 60px;
+            background-color: transparent;
+            color: white;
+            white-space: nowrap;
+            border: none;
+            border-bottom: 3px solid #4CAF50;
+        }
+
+        .slider-config {
+            display: flex;
+            justify-content: space-evenly;
+            align-items: center;
+        }
+
+        .slider-sub {
+            display: flex;
+            align-items: center;
+        }
+
         .error-img {
             position: absolute;
             display: none;
@@ -125,6 +147,11 @@
             position: absolute;
             z-index: 10;
             top: 120%;
+        }
+
+        .playback-options {
+            display: flex;
+            align-items: flex-end;
         }
 
         /* .input-group .w-tooltip::after {
@@ -361,8 +388,9 @@
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" type="button" id="add">Expression</a></li>
-                        <li><a class="dropdown-item" type="button" id="add-variable">Variable</a></li>
                         <li><a class="dropdown-item" type="button" id="add-audio">Audio</a></li>
+                        <li><a class="dropdown-item" type="button" id="add-variable">Variable</a></li>
+                        <li><a class="dropdown-item" type="button" id="add-function">Function</a></li>
                         <li><a class="dropdown-item" type="button" id="add-data">File</a></li>
                     </ul>
                     <a type="button" class="btn btn-secondary ms-auto" data-bs-toggle="modal" data-bs-target="#optionsModal" id="optionsbtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php echo $lang['graphing.tooltip.settings'] ?>">
@@ -381,9 +409,12 @@
             <div id="audio-panel" class="sidebar">
                 <div class="d-flex">
                     <input type="button" class="btn btn-success" value="‹ <?php echo $lang['back'] ?>" id="audio-back">
-                    <a type="button" class="btn btn-success ms-auto" id="btn-play" style="display: block"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-play">
-                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                        </svg></a>
+                    <a type="button" class="btn btn-success ms-auto" id="btn-play" style="display: block"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 384 512" fill="white">
+                            <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
+                        </svg>
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                    </a>
                 </div>
                 <div class="input-group mt-2">
                     <span class="input-group-text input-label-box"><?php echo $lang['graphing.waveType'] ?>:</span>
@@ -391,10 +422,10 @@
                         <option value="sine"><?php echo $lang['graphing.sine'] ?></option>
                         <option value="square"><?php echo $lang['graphing.square'] ?></option>
                         <option value="triangle"><?php echo $lang['graphing.triangle'] ?></option>
-                        <option value="custom"><?php echo $lang['graphing.custom'] ?></option>
+                        <!-- <option value="custom"><?php echo $lang['graphing.custom'] ?></option> -->
                     </select>
                 </div>
-                <div class="sub-container rounded" id="sub-time">
+                <!-- <div class="sub-container rounded" id="sub-time">
                     <h6><?php echo $lang['graphing.playback'] ?>:</h6>
                     <div class="input-group mt-1">
                         <span class="input-group-text input-label-box"><?php echo $lang['graphing.start'] ?>:</span>
@@ -414,7 +445,7 @@
                         <input class="form-check-input" type="checkbox" id="playback-loop">
                         <label class="form-check-label" for="playback-loop"><?php echo $lang['graphing.loop'] ?></label>
                     </div>
-                </div>
+                </div> -->
                 <div class="sub-container rounded" id="sub-frequency">
                     <div class="input-group mt-1">
                         <span class="input-group-text input-label-box"><?php echo $lang['graphing.frequency'] ?>:</span>

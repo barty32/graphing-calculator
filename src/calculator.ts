@@ -719,7 +719,7 @@ class Line{
                 break;
             case 'triangle':
                 this.parser.outputQueue = [{
-                    type: TokenType.FUNCTION, name: 'sine', pos: 0,
+                    type: TokenType.FUNCTION, name: 'triangle', pos: 0,
                     arguments: [
                         [{ type: TokenType.VARIABLE, name: 'x', pos: 0 }],
                         [{ type: TokenType.NUMBER, value: this.audioData.frequency, name: '', pos: 0 }],

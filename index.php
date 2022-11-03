@@ -530,7 +530,7 @@
 HTML); ?>
 
         <?php bootstrapModal('aboutModal', $lang['aboutmodal.title'], <<<HTML
-		<h5 style="font-weight:bold;">{$lang['graphing.title']}, <span style="font-size:1rem">{$lang['aboutmodal.version']} 1.5</span></h5> 
+		<h5 style="font-weight:bold;">{$lang['graphing.title']}, <span style="font-size:1rem">{$lang['aboutmodal.version']} 1.6</span></h5> 
 		<span>{$lang['aboutmodal.created']}: {$lang['month.june']} 2022</span><br />
 		<span>{$lang['aboutmodal.updated']}: {$lang['month.october']} 2022</span>
 		<p>© 2022 by barty12</p>

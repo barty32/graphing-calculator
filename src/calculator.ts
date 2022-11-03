@@ -2,7 +2,6 @@ import { Graph } from './graph.js';
 import { ExpressionParser, ExpressionType, ParserFatalError, Severity, Variables, Functions, TokenType } from './parser.js';
 import { AudioManager, AudioSpec } from './audio.js';
 import DataConverter from './converter.js';
-import { sine, square, triangle } from './audio.js';
 import { IWorkerCalculateData, IWorkerUpdateFunctions, IWorkerReceiveData } from './worker.js';
 import { MathfieldElement } from '../mathlive/dist/mathlive';
 //import type { MathfieldElement } from 'mathlive/dist/types/mathlive/mathlive';
@@ -24,7 +23,7 @@ const eyeOFF = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" v
 const speaker = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-volume-2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
 const brush = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="24" height="24" style="vertical-align:top"><path d="M224 263.3C224.2 233.3 238.4 205.2 262.4 187.2L499.1 9.605C517.7-4.353 543.6-2.965 560.7 12.9C577.7 28.76 580.8 54.54 568.2 74.07L406.5 324.1C391.3 347.7 366.6 363.2 339.3 367.1L224 263.3zM320 400C320 461.9 269.9 512 208 512H64C46.33 512 32 497.7 32 480C32 462.3 46.33 448 64 448H68.81C86.44 448 98.4 429.1 96.59 411.6C96.2 407.8 96 403.9 96 400C96 339.6 143.9 290.3 203.7 288.1L319.8 392.5C319.9 394.1 320 397.5 320 400V400z"/></svg>';
 //const palette = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="24" height="24" style="vertical-align:top"><!--! Font Awesome Pro 6.1.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M512 255.1C512 256.9 511.1 257.8 511.1 258.7C511.6 295.2 478.4 319.1 441.9 319.1H344C317.5 319.1 296 341.5 296 368C296 371.4 296.4 374.7 297 377.9C299.2 388.1 303.5 397.1 307.9 407.8C313.9 421.6 320 435.3 320 449.8C320 481.7 298.4 510.5 266.6 511.8C263.1 511.9 259.5 512 256 512C114.6 512 0 397.4 0 256C0 114.6 114.6 0 256 0C397.4 0 512 114.6 512 256V255.1zM96 255.1C78.33 255.1 64 270.3 64 287.1C64 305.7 78.33 319.1 96 319.1C113.7 319.1 128 305.7 128 287.1C128 270.3 113.7 255.1 96 255.1zM128 191.1C145.7 191.1 160 177.7 160 159.1C160 142.3 145.7 127.1 128 127.1C110.3 127.1 96 142.3 96 159.1C96 177.7 110.3 191.1 128 191.1zM256 63.1C238.3 63.1 224 78.33 224 95.1C224 113.7 238.3 127.1 256 127.1C273.7 127.1 288 113.7 288 95.1C288 78.33 273.7 63.1 256 63.1zM384 191.1C401.7 191.1 416 177.7 416 159.1C416 142.3 401.7 127.1 384 127.1C366.3 127.1 352 142.3 352 159.1C352 177.7 366.3 191.1 384 191.1z"/></svg>'
-
+const download = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 2 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
 
 const graphColors = [
     "darkred",
@@ -441,14 +440,17 @@ class Line{
         this.DOM.playbackOptions.setAttribute('hidden', '');
         this.DOM.playbackOptions.innerHTML = `
         <div class="sub-container rounded" style="background-color: #111">
-            <h6>Playback<?php echo $lang['graphing.playback'] ?>:</h6>
+            <div class="d-flex">
+                <h6>Playback:</h6>
+                <a href="#" id="download-${this.id}" class="btn btn-info ms-auto" style="width: 30px; height: 25px; padding: 0">${download}</a>
+            </div>
             <div class="input-group mt-1">
-                <span class="input-group-text input-label-box">Start<?php echo $lang['graphing.start'] ?>:</span>
+                <span class="input-group-text input-label-box">Start:</span>
                 <input type="number" id="start-input-${this.id}" class="form-control" value="0" step="1">
                 <span class="input-group-text input-label-box">s</span>
             </div>
             <div class="input-group mt-1">
-                <span class="input-group-text input-label-box">End<?php echo $lang['graphing.end'] ?>:</span>
+                <span class="input-group-text input-label-box">End:</span>
                 <input type="number" id="end-input-${this.id}" class="form-control" value="1" step="1">
                 <span class="input-group-text input-label-box">s</span>
             </div>
@@ -456,11 +458,11 @@ class Line{
                 <div>
                     <div class="form-check mt-1">
                         <input class="form-check-input" type="checkbox" id="playback-current-view-${this.id}" disabled>
-                        <label class="form-check-label" for="playback-current-view-${this.id}">Current view<?php echo $lang['graphing.currentView'] ?></label>
+                        <label class="form-check-label" for="playback-current-view-${this.id}">Current view</label>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="playback-loop-${this.id}">
-                        <label class="form-check-label" for="playback-loop-${this.id}">Loop<?php echo $lang['graphing.loop'] ?></label>
+                        <label class="form-check-label" for="playback-loop-${this.id}">Loop</label>
                     </div>
                 </div>
             </div>
@@ -470,6 +472,7 @@ class Line{
         const dLoop    = this.DOM.playbackOptions.querySelector(`#playback-loop-${this.id}`) as HTMLInputElement;
         const dStart   = this.DOM.playbackOptions.querySelector(`#start-input-${this.id}`) as HTMLInputElement;
         const dEnd     = this.DOM.playbackOptions.querySelector(`#end-input-${this.id}`) as HTMLInputElement;
+        const dDownload= this.DOM.playbackOptions.querySelector(`#download-${this.id}`) as HTMLAnchorElement;
 
         dCurView.addEventListener('change', (e) => {
             dStart.disabled = dCurView.checked;
@@ -493,6 +496,13 @@ class Line{
             this.audioDataChanged();
         });
 
+        dDownload.addEventListener('click', () => {
+            const blob = audioMgr.exportWAV(this.id);
+            if (!blob) return;
+            const file = URL.createObjectURL(blob);
+            dDownload.href = file;
+            dDownload.download = 'ExportedAudio_' + this.name;
+        });
 
         this.addPlayBtn(this.DOM.playbackOptions.querySelector('.playback-options')!);
         this.DOM.audioBtn!.style.marginLeft = 'auto';

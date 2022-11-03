@@ -600,13 +600,6 @@ export class Graph {
                     drawLabel = {x: point.x, y: point.y, xpos: x, ypos: y};
                 }
 
-                if (x < -1 || x > this.width + 1 /*|| y < 0 || y > this.height*/) {
-                    continue;
-                }
-                // if (Math.abs(prevX - x) < 1 /*|| Math.abs(prevY - y) < 1*/) {
-                //    continue;
-                // }
-
                 if (!point.connect) {
                     //this.ctx.beginPath();
                     //this.ctx.moveTo(x, y);

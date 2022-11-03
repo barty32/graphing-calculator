@@ -774,6 +774,13 @@ class Line{
             } as IWorkerUpdateFunctions
         });
     }
+
+    updateWorkerRules() {
+        this.worker?.postMessage({
+            msg: 'setRules',
+            data: this.parser.rules
+        });
+    }
 }
 
 //const MQ = MathQuill.getInterface(2);
@@ -785,7 +792,7 @@ var functions: Functions = {};
 
 var idCounter = -1;
 var currentEditedLine: Line;
-var degrees = false;
+//var degrees = false;
 
 const graph = new Graph(document.querySelector('#graph') as HTMLCanvasElement);
 graph.draw();
@@ -822,7 +829,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // @ts-ignore
     //[...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, { delay: { show: 1000, hide: 0} }));
 
-    lines[++idCounter] = new Line(LineType.variable);
+    lines[++idCounter] = new Line(LineType.expression);
     graph.fixSize();
     graph.resetZoom();
 });
@@ -865,20 +872,19 @@ DOM.optionsAxisNumbers?.addEventListener('change', () => {
 });
 
 DOM.optionsDegrees?.addEventListener('click', () => {
-    degrees = true;
+    for (const line in lines) {
+        if(lines[line]) lines[line]!.parser.rules.useDegrees = true;
+        lines[line]?.updateWorkerRules();
+    }
     graph.draw(true);
-    //simulate input event to recalculate all lines
-    //for (let i = 0; i < idCounter; i++){
-    //    document.querySelector(`#expr-input-${i}`)?.dispatchEvent(new Event('input', { bubbles: true }));
-    //}
 });
 
 DOM.optionsRadians?.addEventListener('click', () => {
-    degrees = false;
+    for (const line in lines) {
+        if (lines[line]) lines[line]!.parser.rules.useDegrees = false;
+        lines[line]?.updateWorkerRules();
+    }
     graph.draw(true);
-    //for (let i = 0; i < idCounter; i++) {
-    //    document.querySelector(`#expr-input-${i}`)?.dispatchEvent(new Event('input', { bubbles: true }));
-    //}
 });
 
 

@@ -54,7 +54,7 @@ export interface Token{
     arguments?: Token[][];
 }
 
-interface SpecialRules{
+export interface SpecialRules{
     isCustomFunction: boolean;
     isCustomVariable: boolean;
     useDegrees: boolean;

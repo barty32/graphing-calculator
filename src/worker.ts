@@ -55,6 +55,10 @@ self.onmessage = (e) => {
             // self.postMessage({
             // });
             break;
+        
+        case 'setRules':
+            parser.rules = e.data.data;
+            break;
 
         case 'calculate':
             const line = e.data.data as IWorkerCalculateData;

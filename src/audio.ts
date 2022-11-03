@@ -52,7 +52,9 @@ export class AudioManager {
             this.createCustomWave(id, data, fn ?? (() => 0));
         }
         else if (data.waveType == 'file') {
-            if(buffer) this.createWaveFromFile(id, data, buffer);
+            if (buffer) {
+                return this.createWaveFromFile(id, data, buffer);
+            }
         }
         else {
             this.workletNode?.port.postMessage({
@@ -131,6 +133,7 @@ export class AudioManager {
         }).catch((reason) => {
             throw new Error(reason);
         });
+        return node.audioBuffer?.duration;
     }
 
     private startCustomWave(id: number, onended?: ((ev: Event) => any)) {
@@ -144,7 +147,12 @@ export class AudioManager {
         }
         node.bufferNode.connect(this.audioCtx.destination);
         node.bufferNode.onended = onended ?? null;
-        node.bufferNode.start();
+        if (node.params.waveType == 'file') {
+            node.bufferNode.start(undefined, node.params.start, node.params.end - node.params.start);
+        }
+        else {
+            node.bufferNode.start();
+        }
     }
 }
 

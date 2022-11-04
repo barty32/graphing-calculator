@@ -504,6 +504,10 @@ class Line{
             dDownload.download = 'ExportedAudio_' + this.name;
         });
 
+        if (this.type != LineType.expression) {
+            dDownload.style.display = 'none';
+        }
+
         this.addPlayBtn(this.DOM.playbackOptions.querySelector('.playback-options')!);
         this.DOM.audioBtn!.style.marginLeft = 'auto';
         parent.appendChild(this.DOM.playbackOptions);

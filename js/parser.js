@@ -11,7 +11,7 @@ export var Severity;
     Severity[Severity["ERROR"] = 2] = "ERROR";
     // FATAL_ERROR
 })(Severity || (Severity = {}));
-var TokenType;
+export var TokenType;
 (function (TokenType) {
     TokenType[TokenType["INVALID"] = -1] = "INVALID";
     TokenType[TokenType["NUMBER"] = 0] = "NUMBER";
@@ -35,8 +35,13 @@ export var ExpressionType;
     ExpressionType[ExpressionType["POINT"] = 5] = "POINT";
     ExpressionType[ExpressionType["VARIABLE"] = 6] = "VARIABLE";
     ExpressionType[ExpressionType["CUSTOM_FUNCTION"] = 7] = "CUSTOM_FUNCTION";
+    ExpressionType[ExpressionType["CUSTOM_VARIABLE"] = 8] = "CUSTOM_VARIABLE";
 })(ExpressionType || (ExpressionType = {}));
 const functions = {
+    //audio functions
+    'sine': { argc: 5, type: 'aud', fn: (args) => sine(args[0], args[1], args[2], args[3], args[4]) },
+    'square': { argc: 6, type: 'aud', fn: (args) => square(args[0], args[1], args[2], args[3], args[4], args[5]) },
+    'triangle': { argc: 6, type: 'aud', fn: (args) => triangle(args[0], args[1], args[2], args[3], args[4], args[5]) },
     //hyperbolic inverse
     'arcsinh': { argc: 1, type: 'hyp', fn: (args) => Math.asinh(args[0] * args[1]) },
     'asinh': { argc: 1, type: 'hyp', fn: (args) => Math.asinh(args[0] * args[1]) },
@@ -164,6 +169,13 @@ function problem(char, len, severity, desc) {
     return { desc, severity, char, len };
 }
 export class ExpressionParser {
+    functions = {};
+    variables = {};
+    rules = {
+        isCustomFunction: false,
+        isCustomVariable: false,
+        useDegrees: false
+    };
     problems = [];
     tokenStack = []; //output of tokenize()
     outputQueue = []; //output of parse()
@@ -269,46 +281,62 @@ export class ExpressionParser {
             res = /^[a-z]+/i.exec(expression);
             if (res) {
                 let charStack = res[0];
-                charstackLoop: while (charStack.length) {
-                    //functions have to be sorted from longest to shortest
-                    for (const fn in functions) {
-                        if (charStack.search(new RegExp(`^${fn}`)) !== -1) {
-                            //found function
-                            charStack = charStack.substring(fn.length);
-                            this.tokenStack.push({ type: TokenType.FUNCTION, name: fn, pos });
-                            pos += fn.length;
+                //this is valid only in the beginning
+                if (this.rules.isCustomFunction && iter === 1) {
+                    this.tokenStack.push({ type: TokenType.FUNCTION, name: res[0], pos });
+                }
+                else {
+                    charstackLoop: while (charStack.length) {
+                        const searchForFunction = (fn) => {
+                            if (charStack.search(new RegExp(`^${fn}`)) !== -1) {
+                                //found function
+                                charStack = charStack.substring(fn.length);
+                                this.tokenStack.push({ type: TokenType.FUNCTION, name: fn, pos });
+                                pos += fn.length;
+                                return true;
+                            }
+                            return false;
+                        };
+                        //functions have to be sorted from longest to shortest
+                        for (const fn in functions) {
+                            if (searchForFunction(fn))
+                                continue charstackLoop;
+                        }
+                        //look also for custom functions
+                        for (const fn in this.functions) {
+                            if (searchForFunction(fn))
+                                continue charstackLoop;
+                        }
+                        //it can be constant
+                        const res2 = /^(pi|tau|e|infinity|infty|inf)/i.exec(charStack);
+                        if (res2) {
+                            charStack = charStack.slice(res2[0].length);
+                            let val = '';
+                            switch (res2[0]) {
+                                case 'pi':
+                                    val = 'π';
+                                    break;
+                                case 'tau':
+                                    val = 'τ';
+                                    break;
+                                case 'e':
+                                    val = 'e';
+                                    break;
+                                case 'infinity':
+                                case 'infty':
+                                case 'inf':
+                                    val = '∞';
+                                    break;
+                            }
+                            this.tokenStack.push({ type: TokenType.NUMBER, value: constants[val], name: res[0], pos });
+                            pos += res2[0].length;
                             continue charstackLoop;
                         }
+                        this.tokenStack.push({ type: TokenType.VARIABLE, name: charStack[0], pos });
+                        //pop from front
+                        charStack = charStack.substring(1);
+                        pos++;
                     }
-                    //it can be constant
-                    const res2 = /^(pi|tau|e|infinity|infty|inf)/i.exec(charStack);
-                    if (res2) {
-                        charStack = charStack.slice(res2[0].length);
-                        let val = '';
-                        switch (res2[0]) {
-                            case 'pi':
-                                val = 'π';
-                                break;
-                            case 'tau':
-                                val = 'τ';
-                                break;
-                            case 'e':
-                                val = 'e';
-                                break;
-                            case 'infinity':
-                            case 'infty':
-                            case 'inf':
-                                val = '∞';
-                                break;
-                        }
-                        this.tokenStack.push({ type: TokenType.NUMBER, value: constants[val], name: res[0], pos });
-                        pos += res2[0].length;
-                        continue charstackLoop;
-                    }
-                    this.tokenStack.push({ type: TokenType.VARIABLE, name: charStack[0], pos });
-                    //pop from front
-                    charStack = charStack.substring(1);
-                    pos++;
                 }
                 //pos += res[0].length;
                 expression = expression.slice(res[0].length);
@@ -366,19 +394,11 @@ export class ExpressionParser {
                 expression = expression.slice(res[0].length);
                 continue;
             }
-            //match equality (or inequality) sign
-            // res = /^(=|[<>]=?)/.exec(expression);//^[<>]?(?![<>])=?
-            // if (res) {
-            //     this.tokenStack.push({ type: TokenType.EQUAL, name: res[0], pos });
-            //     pos += res[0].length;
-            //     expression = expression.slice(res[0].length);
-            //     continue;
-            // }
             this.problems.push(problem(pos, 1, Severity.WARNING, `Illegal character '${expression[0]}', ignoring it.`));
             expression = expression.slice(1);
         }
-        console.log('Tokenized:');
-        console.log(this.tokenStack);
+        //console.log('Tokenized:');
+        //console.log(this.tokenStack);
         return this;
     }
     //check syntax of tokenized expression and add missing tokens '*', '(' and ')' where necessary
@@ -387,6 +407,12 @@ export class ExpressionParser {
             const token = tokens[i];
             const prevToken = tokens[i - 1];
             const nextToken = tokens[i + 1];
+            if (this.rules.isCustomFunction && i === 0 && token.type != TokenType.FUNCTION) {
+                this.problems.push(problem(token.pos, token.name.length, Severity.ERROR, `Invalid token ${token.name}, expected function declaration.`));
+            }
+            if (this.rules.isCustomVariable && i === 0 && token.type != TokenType.VARIABLE) {
+                this.problems.push(problem(token.pos, token.name.length, Severity.ERROR, `Invalid token ${token.name}, expected variable name.`));
+            }
             switch (token.type) {
                 // @ts-expect-error
                 case TokenType.NUMBER:
@@ -395,7 +421,15 @@ export class ExpressionParser {
                         this.problems.push(problem(nextToken.pos, 1, Severity.ERROR, `Number ${nextToken.value?.toString()} has unknown meaning.`));
                     }
                 // FALLS THROUGH
+                // @ts-expect-error
                 case TokenType.VARIABLE:
+                    if (this.rules.isCustomVariable && i === 0) {
+                        //check for redefinition
+                        if (this.variables[token.name]) {
+                            this.problems.push(problem(token.pos, token.name.length, Severity.WARNING, `Variable '${token.name}' already exists. Try using different name.`));
+                        }
+                    }
+                // FALLS THROUGH
                 case TokenType.RPAREN:
                     if (nextToken?.type == TokenType.FUNCTION ||
                         nextToken?.type == TokenType.NUMBER ||
@@ -405,6 +439,30 @@ export class ExpressionParser {
                     }
                     break;
                 case TokenType.FUNCTION:
+                    if (this.rules.isCustomFunction && i === 0) {
+                        //check for redefinition
+                        let found = false;
+                        // for (const fn in functions) {
+                        //     if (token.name == fn && functions[fn].type != 'custom') {
+                        //         found = true;
+                        //         break;
+                        //     }
+                        // }
+                        if (functions[token.name] !== undefined /* && functions[token.name].type != 'custom'*/) {
+                            found = true;
+                        }
+                        //if (this.functions[token.name] !== undefined) {
+                        //    found = true;
+                        //}
+                        if (found) {
+                            this.problems.push(problem(token.pos, token.name.length, Severity.ERROR, `Function ${token.name} already exists. Try using different name.`));
+                        }
+                        if (nextToken?.name != '(') {
+                            this.problems.push(problem(token.pos, token.name.length, Severity.ERROR, `Custom functions require parentheses.`));
+                        }
+                        break;
+                    }
+                    //add second (missing) parenthesis
                     if (token.name == 'sum' || token.name == 'prod') {
                         let scope = 0;
                         let commas = 0;
@@ -586,29 +644,22 @@ export class ExpressionParser {
                         continue tokenLoop;
                     }
                     break;
-                // case TokenType.EQUAL:
-                //     if (!prevToken ||
-                //         !(prevToken.type == TokenType.NUMBER ||
-                //         prevToken.type == TokenType.VARIABLE ||
-                //         prevToken.type == TokenType.OPERATOR ||
-                //         prevToken.type == TokenType.RPAREN)) {
-                //         this.problems.push(problem(token.pos, token.name?.length ?? 0, Severity.ERROR, `Left-side of '${token.name}' has invalid syntax.`));
-                //     }
-                //     if (!nextToken ||
-                //         !(nextToken.type == TokenType.NUMBER ||
-                //         nextToken.type == TokenType.VARIABLE ||
-                //         nextToken.type == TokenType.FUNCTION ||
-                //         nextToken.type == TokenType.OPERATOR ||
-                //         nextToken.type == TokenType.LPAREN)) {
-                //         this.problems.push(problem(token.pos, token.name?.length ?? 0, Severity.ERROR, `Right-side of '${token.name}' has invalid syntax.`));
-                //     }
-                //     break;
             }
         }
         //console.log(this.tokenStack);
         return this;
     }
     parse(tokens = this.tokenStack, destination = this.outputQueue) {
+        const popStack = () => {
+            while (operatorStack.length) {
+                const op = operatorStack.pop();
+                if (!op || op.type == TokenType.LPAREN || op.type == TokenType.RPAREN) {
+                    this.problems.push(problem(op?.pos ?? 0, op?.name.length ?? 0, Severity.ERROR, `Mismatched parentheses`));
+                    //return this;
+                }
+                destination.push(op);
+            }
+        };
         const operatorStack = [];
         for (let i = 0; i < tokens.length; i++) {
             const token = tokens[i];
@@ -647,6 +698,10 @@ export class ExpressionParser {
                     let parsedArgs = [];
                     //now recursively process all arguments
                     for (let k = 0; k < args.length; k++) {
+                        //TODO fix this can't work
+                        if (this.rules.isCustomFunction && i === 0 && (args[k].length !== 1 || args[k][0].type != TokenType.VARIABLE)) {
+                            this.problems.push(problem(args[k][0].pos, args[k][0].name.length, Severity.ERROR, `Parameter of custom function must be a variable.`));
+                        }
                         parsedArgs[k] = [];
                         this.parse(args[k], parsedArgs[k]);
                     }
@@ -654,13 +709,19 @@ export class ExpressionParser {
                     destination.push(token);
                     break;
                 case TokenType.OPERATOR:
-                    if (operators[token.name ?? ''].argc < 0) {
+                    if (operators[token.name].argc < 0) {
                         //operators which are written after operand (such as '!')
                         destination.push(token);
                         break;
                     }
+                    else if (operators[token.name].precedence == operators['='].precedence) {
+                        //equality operators must be kept in place
+                        destination.push(token);
+                        popStack();
+                        break;
+                    }
                     let top = operatorStack.at(-1);
-                    while (top && top.type != TokenType.LPAREN && (operators[top.name ?? ''].precedence > operators[token.name ?? ''].precedence || (operators[top.name ?? ''].precedence === operators[token.name ?? ''].precedence && operators[token.name ?? ''].assoc === 'left'))) {
+                    while (top && top.type != TokenType.LPAREN && (operators[top.name].precedence > operators[token.name].precedence || (operators[top.name].precedence === operators[token.name].precedence && operators[token.name].assoc === 'left'))) {
                         operatorStack.pop();
                         destination.push(top);
                         top = operatorStack.at(-1);
@@ -689,66 +750,63 @@ export class ExpressionParser {
                         destination.push(pop);
                     }
                     break;
-                // else if (token.type == TokenType.COMMA) {
-                // }
-                /*case TokenType.EQUAL:
-                    while (operatorStack.length) {
-                        const op = operatorStack.pop();
-                        if (!op || op.type == TokenType.LPAREN || op.type == TokenType.RPAREN) {
-                            this.problems.push(problem(op?.pos ?? 0, op?.name?.length ?? 0, Severity.ERROR, `Mismatched parentheses`));
-                            return this;
-                        }
-                        destination.push(op);
-                    }
-                    destination.push(token);
-                    break;*/
             }
         }
-        while (operatorStack.length) {
-            const op = operatorStack.pop();
-            if (!op || op.type == TokenType.LPAREN || op.type == TokenType.RPAREN) {
-                this.problems.push(problem(op?.pos ?? 0, op?.name?.length ?? 0, Severity.ERROR, `Mismatched parentheses`));
-                return this;
-            }
-            destination.push(op);
-        }
+        popStack();
         console.log(destination);
         return this;
     }
-    evaluate(variables, tokens = this.outputQueue) {
+    evaluate(tokens = this.outputQueue) {
+        const eq = tokens.findIndex(e => e.type == TokenType.OPERATOR && e.name == '=');
         switch (this.getExpressionType(tokens)) {
             case ExpressionType.FUNCTION:
-                const i = tokens.findIndex(e => e.type == TokenType.OPERATOR && e.name == '=');
                 let tok = tokens;
-                if (i > -1) {
-                    tok = tokens.slice(i + 1);
+                if (eq > -1) {
+                    tok = tokens.slice(eq + 1);
                 }
-                return this.evaluateInternal(variables, tok);
+                return this.evaluateInternal(tok);
             case ExpressionType.YFUNCTION:
-                const j = tokens.findIndex(e => e.type == TokenType.OPERATOR && e.name == '=');
                 let tok2 = tokens;
-                if (j > -1) {
-                    tok2 = tokens.slice(j + 1);
+                if (eq > -1) {
+                    tok2 = tokens.slice(eq + 1);
                 }
-                //variables['y'] = variables['x'];
-                //delete variables['x'];
-                return this.evaluateInternal(variables, tok2);
+                return this.evaluateInternal(tok2);
             case ExpressionType.EQUATION:
-                const k = tokens.findIndex(e => e.type == TokenType.OPERATOR && e.name == '=');
-                if (k > -1) {
-                    const left = tokens.slice(0, k);
-                    const right = tokens.slice(k + 1);
-                    return Math.abs(this.evaluateInternal(variables, left) - this.evaluateInternal(variables, right)) <= 1 / variables['res'] ? 1 : 0;
+                if (eq > -1) {
+                    const left = tokens.slice(0, eq);
+                    const right = tokens.slice(eq + 1);
+                    return Math.abs(this.evaluateInternal(left) - this.evaluateInternal(right)) <= 1 / 100 ? 1 : 0; //1/this.variables['res']
                 }
                 throw new ParserFatalError("Internal error: expression is equality and is missing '='");
             case ExpressionType.INEQUALITY:
                 throw new ParserFatalError('Inequalities are currently not supported.');
+            case ExpressionType.CUSTOM_FUNCTION:
+                const fn = tokens[0];
+                if (eq > -1) {
+                    // functions[tokens[0].name] = {
+                    //     argc: fn.arguments?.length ?? 0, type: 'custom', fn: (args) => {
+                    //         return this.evaluateInternal(tokens.slice(eq + 1));
+                    //     }
+                    // };
+                    const args = [];
+                    for (let i = 0; i < (fn.arguments?.length ?? 0); i++) {
+                        args.push(fn.arguments[i][0].name);
+                    }
+                    this.functions[tokens[0].name] = { args, fn: tokens.slice(eq + 1), };
+                }
+                return NaN;
+            case ExpressionType.CUSTOM_VARIABLE:
+                const variable = tokens[0];
+                if (eq > -1) {
+                    this.variables[variable.name] = tokens.slice(eq + 1);
+                }
+                return NaN;
             //case ExpressionType.POLAR:
             default:
                 throw new ParserFatalError('This type of expression is currently not supported.');
         }
     }
-    evaluateInternal(variables, tokens = this.outputQueue) {
+    evaluateInternal(tokens = this.outputQueue) {
         let tmpStack = [];
         let asymptotes = [];
         for (const token of tokens) {
@@ -757,8 +815,9 @@ export class ExpressionParser {
                     tmpStack.push(token.value ?? NaN);
                     break;
                 case TokenType.FUNCTION:
+                    const custom = functions[token.name] === undefined;
                     const args = [];
-                    const argc = Math.abs(functions[token.name ?? ''].argc);
+                    const argc = Math.abs((custom ? this.functions[token.name]?.args.length : functions[token.name]?.argc) ?? 0);
                     if (!token.arguments)
                         token.arguments = [];
                     const providedArgs = token.arguments.length;
@@ -770,6 +829,33 @@ export class ExpressionParser {
                     else if (providedArgs < argc) {
                         this.problems.push(problem(0, 0, Severity.ERROR, `Not enough arguments: function '${token.name}' expects ${argc} arguments, ${providedArgs} provided.`));
                     }
+                    if (custom) {
+                        //custom function
+                        const fn = this.functions[token.name];
+                        if (!fn) {
+                            this.problems.push(problem(0, 0, Severity.ERROR, `Unknown function '${token.name}'.`));
+                        }
+                        const oldVals = [];
+                        for (let i = 0; i < fn.args.length; i++) {
+                            if (this.variables[fn.args[i]]) {
+                                oldVals[i] = this.variables[fn.args[i]];
+                            }
+                            this.variables[fn.args[i]] = [];
+                            this.variables[fn.args[i]][0] = { type: TokenType.NUMBER, pos: 0, value: this.evaluateInternal(token.arguments[i]), name: '' };
+                        }
+                        const result = this.evaluateInternal(fn.fn);
+                        //cleanup
+                        for (let i = 0; i < fn.args.length; i++) {
+                            if (oldVals[i]) {
+                                this.variables[fn.args[i]] = oldVals[i];
+                            }
+                            else {
+                                delete this.variables[fn.args[i]];
+                            }
+                        }
+                        tmpStack.push(result);
+                        break;
+                    }
                     //special functions
                     //sum(1/(2n-1)sin((2n-1)x),n,1,100)
                     //triangle: $$ -\frac{8}{\pi^2}\sum_{n=1}^{10}\frac{\left(-1\right)^n}{\left(2n-1\right)^2}\operatorname{sin}\left(2\pi\left(2n-1\right)x\right) $$
@@ -777,48 +863,51 @@ export class ExpressionParser {
                     //square
                     //sin(x)+1/3sin(3x)+1/5sin(5x)+1/7sin(7x)+1/9sin(9x)+1/11sin(11x)+1/13sin(13x)+1/15sin(15x)+1/17sin(17x)+1/19sin(19x)+1/21sin(21x)
                     if (token.name == 'sum' || token.name == 'prod') {
-                        const start = this.evaluateInternal(variables, token.arguments[0]);
-                        const end = this.evaluateInternal(variables, token.arguments[1]);
+                        const start = this.evaluateInternal(token.arguments[0]);
+                        const end = this.evaluateInternal(token.arguments[1]);
                         if (token.arguments[2].length !== 1 || token.arguments[2][0].type != TokenType.VARIABLE) {
                             this.problems.push(problem(token.pos, 1, Severity.ERROR, `Second argument to '${token.name}' function must be a variable name (for example 'n').`));
                         }
                         const variable = token.arguments[2][0].name;
+                        this.variables[variable] = [];
                         let result = 0;
                         for (let i = start; i < end; i++) {
-                            variables[variable] = i;
+                            this.variables[variable][0] = { type: TokenType.NUMBER, pos: 0, value: i, name: i.toString() };
                             if (token.name == 'sum') {
-                                result += this.evaluateInternal(variables, token.arguments[3]);
+                                result += this.evaluateInternal(token.arguments[3]);
                             }
                             else {
-                                result *= this.evaluateInternal(variables, token.arguments[3]);
+                                result *= this.evaluateInternal(token.arguments[3]);
                             }
                         }
                         tmpStack.push(result);
                         break;
                     }
                     else if (token.name == 'der' || token.name == 'derivative') {
-                        const vars = structuredClone(variables);
+                        //const vars = structuredClone(variables);
+                        const prevX = this.variables['x'][0].value;
+                        const y1 = this.evaluateInternal(token.arguments[0]);
                         const dx = 1e-6;
-                        vars['x'] -= dx;
-                        const y1 = this.evaluateInternal(variables, token.arguments[0]);
-                        const y2 = this.evaluateInternal(vars, token.arguments[0]);
+                        this.variables['x'][0].value -= dx;
+                        const y2 = this.evaluateInternal(token.arguments[0]);
+                        this.variables['x'][0].value = prevX;
                         tmpStack.push((y1 - y2) / dx);
                         break;
                     }
                     //integrate(expr)
                     else if (token.name == 'int' || token.name == 'integrate') {
-                        const vars = structuredClone(variables);
-                        // const dx = 1e-6;
-                        // vars['x'] -= dx;
-                        // const y1 = this.evaluate(variables, token.arguments![0]);
-                        // const y2 = this.evaluate(vars, token.arguments![0]);
-                        // tmpStack.push((y1) * dx);
-                        let result = 0;
-                        for (let i = 0; i < variables['x']; i += 1 / variables['res']) {
-                            vars['x'] = i;
-                            result += 1 / variables['res'] * this.evaluateInternal(vars, token.arguments[0]);
-                        }
-                        tmpStack.push(result);
+                        //     const vars = structuredClone(variables);
+                        //     // const dx = 1e-6;
+                        //     // vars['x'] -= dx;
+                        //     // const y1 = this.evaluate(variables, token.arguments![0]);
+                        //     // const y2 = this.evaluate(vars, token.arguments![0]);
+                        //     // tmpStack.push((y1) * dx);
+                        //     let result = 0;
+                        //     for (let i = 0; i < variables['x']; i += 1 / variables['res']){
+                        //         vars['x'] = i;
+                        //         result += 1 / variables['res'] * this.evaluateInternal(vars, token.arguments[0]);
+                        //     }
+                        //    tmpStack.push(result);
                         break;
                     }
                     // if (token.name == 'log') {
@@ -828,27 +917,27 @@ export class ExpressionParser {
                     // }
                     //recursively evaluate all arguments
                     for (const arg of token.arguments) {
-                        const res = this.evaluateInternal(variables, arg);
+                        const res = this.evaluateInternal(arg);
                         args.push(res);
                         //asymptotes = asymptotes.concat(res.asymptotes);
                     }
                     //goniometric functions have one hidden argument (degrees/radians)
-                    if (functions[token.name ?? ''].type == 'trig' || functions[token.name ?? ''].type == 'hyp') {
-                        args.push(variables['degrees'] ? Math.PI / 180 : 1);
+                    if (functions[token.name].type == 'trig' || functions[token.name].type == 'hyp') {
+                        args.push(this.rules.useDegrees ? Math.PI / 180 : 1);
                     }
-                    tmpStack.push(functions[token.name ?? ''].fn(args));
+                    tmpStack.push(functions[token.name].fn(args));
                     break;
                 case TokenType.VARIABLE:
-                    const val = variables[token.name ?? ''];
-                    if (val === undefined) {
+                    if (this.variables[token.name] === undefined) {
                         this.problems.push(problem(0, 0, Severity.ERROR, `Variable '${token.name}' is not defined.`)); //Value for variable '${token.value}' was not provided
                     }
+                    const val = this.evaluateInternal(this.variables[token.name]);
                     tmpStack.push(val);
                     break;
                 case TokenType.OPERATOR:
                     {
                         const args = [];
-                        const argc = Math.abs(operators[token.name ?? ''].argc);
+                        const argc = Math.abs(operators[token.name].argc);
                         for (let i = 0; i < argc; i++) {
                             const arg = tmpStack.pop();
                             if (arg === undefined) {
@@ -859,7 +948,7 @@ export class ExpressionParser {
                             args.push(arg);
                         }
                         args.reverse();
-                        tmpStack.push(operators[token.name ?? ''].fn(args));
+                        tmpStack.push(operators[token.name].fn(args));
                     }
                     break;
             }
@@ -870,63 +959,105 @@ export class ExpressionParser {
         return tmpStack[0];
         //return { result: tmpStack[0], asymptotes: asymptotes };
     }
-    static evaluateJSON(input, variables) {
-        const obj = JSON.parse(input);
-        let tmpStack = [];
-        if (!Array.isArray(obj)) {
-            throw 0;
+    // static evaluateJSON(input: string, variables: Variables) {
+    //     const obj = JSON.parse(input);
+    //     let tmpStack: number[] = [];
+    //     if (!Array.isArray(obj)) {
+    //         throw 0;
+    //     }
+    //     for (const item of obj) {
+    //         let type = 'unknown';
+    //         if (typeof item == 'number') {
+    //             type = 'number'
+    //         }
+    //         else if (typeof item == 'object' && typeof item?.num == 'string') {
+    //             type = 'numberAsObject';
+    //         }
+    //         else if (typeof item == 'string') {
+    //             if (item[0] === "'") {
+    //                 if (item.at(-1) === "'") {
+    //                     type = 'string';
+    //                 }
+    //                 else {
+    //                     type = 'stringInvalid';
+    //                 }
+    //             }
+    //             else {
+    //                 type = 'symbol';
+    //             }
+    //         }
+    //         else if (Array.isArray(item) && item.length) {
+    //             type = 'function';
+    //         }
+    //         else if (typeof item == 'object') {
+    //             if (typeof item?.num == 'string') {
+    //                 type = 'numberAsObject';
+    //             }
+    //             else if (typeof item?.sym == 'string') {
+    //                 type = 'symbolAsObject';
+    //             }
+    //             else if (Array.isArray(item?.fn)) {
+    //                 type = 'functionAsObject';
+    //             }
+    //             else if (typeof item?.str == 'string') {
+    //                 type = 'stringAsObject';
+    //             }
+    //             else if (typeof item?.dict == 'object') {
+    //                 type = 'functionAsObject';
+    //             }
+    //             else {
+    //                 type = 'invalidObject';
+    //             }
+    //         }
+    //         else {
+    //             'invalid';
+    //         }
+    //         console.log(type);
+    //     }
+    // }
+    // updateCustomFunctions() {
+    //     for (const name in this.functions) {
+    //         const fn = this.functions[name];
+    //         functions[name] = {
+    //             argc: fn.args.length, type: 'custom', fn: (args) => {
+    //                 const oldVals: Token[][] = [];
+    //                 for (let i = 0; i < fn.args.length; i++) {
+    //                     if (this.variables[fn.args[i]]) {
+    //                         oldVals[i] = this.variables[fn.args[i]];
+    //                     }
+    //                     this.variables[fn.args[i]] = [];
+    //                     this.variables[fn.args[i]][0] = { type: TokenType.NUMBER, pos: 0, value: args[i], name: '' };
+    //                 }
+    //                 const result = this.evaluateInternal(fn.fn);
+    //                 //cleanup
+    //                 for (let i = 0; i < fn.args.length; i++) {
+    //                     if (oldVals[i]) {
+    //                         this.variables[fn.args[i]] = oldVals[i];
+    //                     }
+    //                     else {
+    //                         delete this.variables[fn.args[i]];
+    //                     }
+    //                 }
+    //                 return result;
+    //             }
+    //         };
+    //     }
+    // }
+    setVariable(name, value) {
+        if (!this.variables.name) {
+            this.variables[name] = [];
+            this.variables[name][0] = { type: TokenType.NUMBER, pos: 0, value, name: '' };
+            return;
         }
-        for (const item of obj) {
-            let type = 'unknown';
-            if (typeof item == 'number') {
-                type = 'number';
-            }
-            else if (typeof item == 'object' && typeof item?.num == 'string') {
-                type = 'numberAsObject';
-            }
-            else if (typeof item == 'string') {
-                if (item[0] === "'") {
-                    if (item.at(-1) === "'") {
-                        type = 'string';
-                    }
-                    else {
-                        type = 'stringInvalid';
-                    }
-                }
-                else {
-                    type = 'symbol';
-                }
-            }
-            else if (Array.isArray(item) && item.length) {
-                type = 'function';
-            }
-            else if (typeof item == 'object') {
-                if (typeof item?.num == 'string') {
-                    type = 'numberAsObject';
-                }
-                else if (typeof item?.sym == 'string') {
-                    type = 'symbolAsObject';
-                }
-                else if (Array.isArray(item?.fn)) {
-                    type = 'functionAsObject';
-                }
-                else if (typeof item?.str == 'string') {
-                    type = 'stringAsObject';
-                }
-                else if (typeof item?.dict == 'object') {
-                    type = 'functionAsObject';
-                }
-                else {
-                    type = 'invalidObject';
-                }
-            }
-            else {
-                'invalid';
-            }
-            console.log(type);
-        }
+        this.variables[name][0].value = value;
     }
     getExpressionType(tokens = this.outputQueue) {
+        if (this.rules.isCustomFunction /* && left.length == 1 && left[0].type == TokenType.FUNCTION*/) {
+            return ExpressionType.CUSTOM_FUNCTION;
+        }
+        else if (this.rules.isCustomVariable) {
+            return ExpressionType.CUSTOM_VARIABLE;
+        }
         const i = tokens.findIndex(e => e.type == TokenType.OPERATOR && operators[e.name].precedence == operators['='].precedence); ///^(<|>|<=|>=|=)/.test(e.name)
         if (i > -1) {
             if (tokens[i].name != '=') {
@@ -943,9 +1074,6 @@ export class ExpressionParser {
                     return ExpressionType.YFUNCTION;
                 }
                 return ExpressionType.VARIABLE;
-            }
-            else if (left.length == 1 && left[0].type == TokenType.FUNCTION) {
-                return ExpressionType.CUSTOM_FUNCTION;
             }
             //generic equation
             return ExpressionType.EQUATION;
@@ -983,4 +1111,23 @@ const gamma = (z) => {
         return Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x;
     }
 };
+export function sine(x, frequency, amplitude, phase, bias) {
+    return amplitude / 100 * Math.sin(frequency * x / 1000 * 2 * Math.PI - phase / 180 * Math.PI);
+}
+export function square(x, frequency, amplitude, duty, phase, bias) {
+    return amplitude / 100 * (mod(frequency * x / 1000 - phase / 360, 1) < (duty / 100) ? 1 : -1);
+}
+export function triangle(x, frequency, amplitude, skew, phase, bias) {
+    amplitude /= 50;
+    skew /= 100;
+    const period = 1000 / frequency;
+    x -= phase / 360 * period;
+    x += skew * period / 2;
+    x = mod(x, period);
+    const freq = (frequency * x / 1000) * 2;
+    return (x < skew * period ? mod(freq / (2 * skew), 1) : mod(-(freq - 2 * skew) / (2 * (1 - skew)), 1)) * amplitude - amplitude / 2;
+}
+function mod(x, m) {
+    return ((x % m) + m) % m;
+}
 //# sourceMappingURL=parser.js.map

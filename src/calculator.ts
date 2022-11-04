@@ -93,7 +93,8 @@ class Line{
         fnType: undefined as (HTMLSpanElement | undefined),
         sliderGroup: undefined as (HTMLDivElement | undefined),
         sliderSetup: undefined as (HTMLDivElement | undefined),
-        slider: undefined as (HTMLInputElement | undefined)
+        slider: undefined as (HTMLInputElement | undefined),
+        clipping: undefined as (HTMLDivElement | undefined)
     }
 
     constructor(type: LineType) {
@@ -467,12 +468,17 @@ class Line{
                 </div>
             </div>
         </div>
+        <div id="clipping-${this.id}" class="clipping rounded" hidden>
+            <img src="/assets/images/warning.svg" style="color:black">
+            <div class="ms-2">Result audio will be clipped. Audio wave should have y between 1 and -1.</div>
+        </div>
         `;
         const dCurView = this.DOM.playbackOptions.querySelector(`#playback-current-view-${this.id}`) as HTMLInputElement;
         const dLoop    = this.DOM.playbackOptions.querySelector(`#playback-loop-${this.id}`) as HTMLInputElement;
         const dStart   = this.DOM.playbackOptions.querySelector(`#start-input-${this.id}`) as HTMLInputElement;
         const dEnd     = this.DOM.playbackOptions.querySelector(`#end-input-${this.id}`) as HTMLInputElement;
-        const dDownload= this.DOM.playbackOptions.querySelector(`#download-${this.id}`) as HTMLAnchorElement;
+        const dDownload = this.DOM.playbackOptions.querySelector(`#download-${this.id}`) as HTMLAnchorElement;
+        this.DOM.clipping = this.DOM.playbackOptions.querySelector(`#clipping-${this.id}`) as HTMLDivElement;
 
         dCurView.addEventListener('change', (e) => {
             dStart.disabled = dCurView.checked;
@@ -527,16 +533,19 @@ class Line{
             });
             fileInput.files[0].arrayBuffer().then((data) => {
                 if (this.playing) this.toggleAudio();
-                audioMgr.addNode(this.id, this.audioData, undefined, data)?.then((val) => {
-                    if (this.DOM.playbackOptions && val !== undefined) {
-                        const dStart = this.DOM.playbackOptions.querySelector(`#start-input-${this.id}`) as HTMLInputElement;
-                        const dEnd = this.DOM.playbackOptions.querySelector(`#end-input-${this.id}`) as HTMLInputElement;
-                        dStart.value = '0';
-                        dEnd.value = val.toString();
-                        this.audioData.start = 0;
-                        this.audioData.end = val;
-                    }
-                });
+                const pr = audioMgr.addNode(this.id, this.audioData, undefined, data);
+                if (pr instanceof Promise<number | undefined>) {
+                    pr.then((val) => {
+                        if (this.DOM.playbackOptions && val !== undefined) {
+                            const dStart = this.DOM.playbackOptions.querySelector(`#start-input-${this.id}`) as HTMLInputElement;
+                            const dEnd = this.DOM.playbackOptions.querySelector(`#end-input-${this.id}`) as HTMLInputElement;
+                            dStart.value = '0';
+                            dEnd.value = val.toString();
+                            this.audioData.start = 0;
+                            this.audioData.end = val;
+                        }
+                    });
+                }
             });
         });
         row2.appendChild(fileInput);
@@ -755,7 +764,13 @@ class Line{
             default:
                 //graph.attachFn(this.id, () => undefined, ExpressionType.FUNCTION);
         }
-        audioMgr.addNode(this.id, this.audioData, fn);
+        const res = audioMgr.addNode(this.id, this.audioData, fn);
+        if (typeof res == 'boolean' && res == true) {
+            this.DOM.clipping?.removeAttribute('hidden');
+        }
+        else {
+            this.DOM.clipping?.setAttribute('hidden', '');
+        }
         if (this.playing) audioMgr.startNode(this.id);
         graph.draw();
     }

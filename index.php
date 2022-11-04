@@ -173,6 +173,15 @@
             color: orange;
         }
 
+        .clipping {
+            width: 100%;
+            background-color: gold;
+            text-align: left;
+            padding: 5px;
+            display: flex;
+            color: black;
+        }
+
         #content {
             display: flex;
             grid-template-columns: 0 350px;

@@ -49,7 +49,7 @@ export class AudioManager {
     addNode(id: number, data: AudioSpec, fn?: AudioFn, buffer?: ArrayBuffer) {
 
         if (data.waveType == 'custom') {
-            this.createCustomWave(id, data, fn ?? (() => 0));
+            return this.createCustomWave(id, data, fn ?? (() => 0));
         }
         else if (data.waveType == 'file') {
             if (buffer) {
@@ -105,11 +105,14 @@ export class AudioManager {
     }
 
     private createCustomWave(id: number, params: AudioSpec, fn: AudioFn) {
-
+        let clipping = false;
         const buffer = new AudioBuffer({ length: this.audioCtx.sampleRate * (params.end - params.start), numberOfChannels: 1, sampleRate: this.audioCtx.sampleRate });
         let rawArray = buffer.getChannelData(0);
         for (let i = 0; i < buffer.length; i++) {
             rawArray[i] = fn((i / this.audioCtx.sampleRate + params.start) * 1000) ?? 0;
+            if (rawArray[i] > 1 || rawArray[i] < -1) {
+                clipping = true;
+            }
         }
         this.customNodes[id] = {
             params,
@@ -117,6 +120,7 @@ export class AudioManager {
             audioBuffer: buffer,
             bufferNode: null
         };
+        return clipping;
     }
 
     private async createWaveFromFile(id: number, params: AudioSpec, data: ArrayBuffer) {

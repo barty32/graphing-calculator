@@ -23,7 +23,7 @@
         }
 
         .sub-container {
-            margin: 10px 0;
+            margin: 10px 0 0;
             padding: 10px;
             border: 2px solid #4CAF50;
             display: flex;
@@ -334,9 +334,10 @@
             }
         }
 
-        @media (max-width: 768px) {
-            #content:not([panel-hidden]) #graph {
-                border: none;
+        @media (max-width: 400px) {
+            #side-panel.show {
+                /* border: none; */
+                margin-left: -6px;
             }
         }
 
@@ -388,7 +389,7 @@
         </div>
         <div id="side-panel" class="offcanvas offcanvas-end" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1">
             <div id="wave-panel" class="sidebar">
-                <div id="panel-control-buttons" class="d-flex">
+                <div id="panel-control-buttons" class="d-flex flex-wrap">
                     <a type="button" class="btn btn-success" id="hide-btn" data-bs-toggle="offcanvas" data-bs-target="#side-panel" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php echo $lang['graphing.tooltip.closePanel'] ?>"><b>&gt;&gt;</b></a>
                     <a type="button" class="btn btn-secondary ms-2" data-bs-toggle="dropdown" aria-expanded="false">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="24" height="24" fill="white">

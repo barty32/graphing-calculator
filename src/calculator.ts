@@ -212,18 +212,17 @@ class Line{
         this.DOM.subContainer.appendChild(row1);
 
         if (this.type != LineType.audio && this.type != LineType.function) {
-
-            // Row 2
-            const row2 = document.createElement('div');
-            row2.classList.add('input-group', 'mt-2');
-
             if (this.type == LineType.expression) {
+                // Row 2
+                const row2 = document.createElement('div');
+                row2.classList.add('input-group', 'mt-2');
                 this.DOM.fnType = document.createElement('span');
                 this.DOM.fnType.classList.add('input-group-text', 'input-label-box', 'user-select-none');
                 this.DOM.fnType.innerHTML = 'f(x):';
                 row2.appendChild(this.DOM.fnType);
                 //this.addExpressionType();
                 this.addMathInput(row2);
+                this.DOM.subContainer.appendChild(row2);
             }
             else if (this.type == LineType.variable) {
                 this.addVariableSlider(this.DOM.subContainer);
@@ -231,7 +230,6 @@ class Line{
             else if (this.type == LineType.rawData) {
                 this.addFileInput(this.DOM.subContainer);
             }
-            this.DOM.subContainer.appendChild(row2);
         }
         if (this.type == LineType.expression || this.type == LineType.rawData) {
             this.addPlaybackOptions(this.DOM.subContainer);
@@ -427,6 +425,7 @@ class Line{
         btn4.addEventListener('click', (e) => {
             //remove
             this.DOM.subContainer?.remove();
+            this.worker?.terminate();
             graph.removeLine(this.id);
             graph.draw();
             audioMgr.removeNode(this.id);

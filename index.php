@@ -4,9 +4,9 @@
 
 <head>
     <?php includeHead(1, 1, 1, 1) ?>
-    <!-- <link rel="stylesheet" href="mathquill/mathquill.css" /> -->
+    <link rel="stylesheet" href="mathquill/mathquill.css" />
     <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script> -->
-    <!-- <script src="mathquill/mathquill.min.js"></script> -->
+    <script src="mathquill/mathquill.js"></script>
     <!-- <script src="https://unpkg.com/mathlive?module" type="module" defer></script> -->
     <!-- <script src="./mathlive/dist/mathlive.min.mjs" type="text/javascript-module" defer></script> -->
     <title><?php echo $lang['graphing.title'] ?> | barty12's webpage</title>
@@ -40,9 +40,6 @@
             position: absolute;
             width: 100%;
             transition: transform 0.3s;
-            /* animation: switch-page 1s; */
-            /*timing-function delay iteration-count direction fill-mode;*/
-            /* animation-fill-mode: forwards; */
             padding: 10px;
             display: flex;
             flex-direction: column;
@@ -55,16 +52,6 @@
         .offcanvas:not(.show) {
             position: absolute;
         }
-
-        /* #content:has(.offcanvas:not(.show)) {
-            display: block;
-        } */
-
-        /*.sidebar.hidden {*/
-        /* animation: switch-page 1s; */
-        /*timing-function delay iteration-count direction fill-mode;*/
-        /* animation-direction: reverse; */
-        /*}*/
 
         .small-input {
             width: 100%;
@@ -89,12 +76,11 @@
         }
 
         .error-img {
-            position: absolute;
             display: none;
             z-index: 10;
-            top: 7px;
-            right: 5px;
+            margin: auto -5px;
             user-select: none;
+            cursor: default;
         }
 
         .input-group .e-tooltip {
@@ -107,6 +93,10 @@
             position: absolute;
             z-index: 10;
             top: 120%;
+            right: 0;
+            font-family: Verdana, system-ui, Arial, sans-serif;
+            font-size: 1rem;
+            line-height: 1.5;
         }
 
         .input-group .e-tooltip::after {
@@ -114,7 +104,7 @@
             position: absolute;
             bottom: 100%;
             right: 10px;
-            margin-left: -5px;
+            margin-left: -6px;
             border-width: 5px;
             border-style: solid;
             border-color: transparent transparent red transparent;
@@ -180,20 +170,15 @@
             padding: 5px;
             display: flex;
             color: black;
+            margin-top: 10px;
         }
 
         #content {
             display: flex;
             grid-template-columns: 0 350px;
             height: 100%;
-            /* max-height: 100vh; */
-            /* max-width: 100vh; */
             width: 100%;
         }
-
-        /* #content[panel-hidden] {
-            grid-template-columns: auto 0 !important;
-        } */
 
         #graph-container {
             position: relative;
@@ -209,7 +194,6 @@
         }
 
         #side-panel {
-            /* position: relative; */
             height: 100%;
             background-color: #333;
             overflow-y: auto;
@@ -219,7 +203,6 @@
 
         #show-btn {
             position: fixed;
-            /* display: none; */
             right: 0;
             top: 20px;
             color: white;
@@ -236,14 +219,6 @@
         #panel-control-buttons>a {
             width: 50px;
         }
-
-        /* #content[panel-hidden] #show-btn {
-            display: block;
-        } */
-
-        /* #content[panel-hidden] #hide-btn {
-            transform: translateX(-110%);
-        } */
 
         #audio-panel {
             transform: translateX(110%);
@@ -307,11 +282,8 @@
             width: 2rem;
             height: 2rem;
             padding: 0;
-            /* margin: 0.1rem; */
             border: 2px solid #222;
             cursor: pointer;
-            /* mix-blend-mode: difference; */
-            /*background-color:white;*/
             transition: filter 0.15s ease-in-out;
         }
 
@@ -324,11 +296,6 @@
         }
 
         @media (min-width: 768px) {
-
-            /* #content {
-                grid-template-columns: auto 50%;
-            } */
-
             #backbtn {
                 display: block;
             }
@@ -336,30 +303,9 @@
 
         @media (max-width: 400px) {
             #side-panel.show {
-                /* border: none; */
                 margin-left: -6px;
             }
         }
-
-        /* @keyframes switch-page-left {
-            from {
-                transform: translateX(0%);
-            }
-
-            to {
-                transform: translateX(-110%);
-            }
-        }
-
-        @keyframes switch-page-right {
-            from {
-                transform: translateX(110%);
-            }
-
-            to {
-                transform: translateX(0%);
-            }
-        } */
     </style>
 </head>
 

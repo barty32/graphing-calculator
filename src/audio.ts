@@ -147,6 +147,10 @@ export class AudioManager {
     private startCustomWave(id: number, onended?: ((ev: Event) => any)) {
         const node = this.customNodes[id];
         if (!node) return;
+        if (node.params.start >= node.params.end) {
+            alert('Start time must be lower than end time.');
+            return;
+        }
 
         node.bufferNode = new AudioBufferSourceNode(this.audioCtx, { buffer: node.audioBuffer, loop: node.params.loop });
         if (node.params.waveType == 'file') {

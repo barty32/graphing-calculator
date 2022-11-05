@@ -105,6 +105,10 @@ export class AudioManager {
     }
 
     private createCustomWave(id: number, params: AudioSpec, fn: AudioFn) {
+        if (params.start >= params.end) {
+            alert('Start time must be lower than end time.');
+            return;
+        }
         let clipping = false;
         const buffer = new AudioBuffer({ length: this.audioCtx.sampleRate * (params.end - params.start), numberOfChannels: 1, sampleRate: this.audioCtx.sampleRate });
         let rawArray = buffer.getChannelData(0);

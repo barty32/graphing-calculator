@@ -122,7 +122,7 @@ class Line{
             phase: 0,
             bias: 0,
             start: 0,
-            end: 2,
+            end: 1,
             currentView: false,
             loop: false
         };

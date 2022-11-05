@@ -71,6 +71,7 @@ self.onmessage = (e) => {
                     finished: false
                 });
             }, 10);
+            parser.problems = [];
 
             if (parser.getExpressionType(line.expression) == ExpressionType.FUNCTION) {
                 const start = (line.xOffset / line.xScale);
@@ -138,6 +139,12 @@ self.onmessage = (e) => {
                     }
                     catch (e) {
                         //console.error(e);
+                        clearInterval(int);
+                        self.postMessage({
+                            points,
+                            finished: true
+                        });
+                        return;
                     }
                     
                     //Math.abs(i-points.at(-1)?.x) < 1/line.xScale?  
@@ -151,7 +158,18 @@ self.onmessage = (e) => {
                 const end = ((line.yOffset - line.height) / line.yScale);
                 for (let i = start; i >= end; i -= 1 / line.yScale) {
                     parser.variables['y'][0] = { type: TokenType.NUMBER, pos: 0, name: '', value: i };
-                    const x = parser.evaluate(line.expression);
+                    let x = undefined
+                    try {
+                        x = parser.evaluate(line.expression);
+                    }
+                    catch (e) {
+                        clearInterval(int);
+                        self.postMessage({
+                            points,
+                            finished: true
+                        });
+                        return;
+                    }
                     points.push({ x, y: i, connect: true, selected: false, debug: 0 });
                 }
             }
@@ -166,8 +184,18 @@ self.onmessage = (e) => {
                     for (let j = starty; j >= endy; j -= 1 / line.yScale) {
                         parser.variables['x'][0] = { type: TokenType.NUMBER, pos: 0, name: '', value: i };
                         parser.variables['y'][0] = { type: TokenType.NUMBER, pos: 0, name: '', value: j };
-                        if (parser.evaluate(line.expression) == 1) {
-                            points.push({ x: i, y: j, connect: false, selected: false, debug: 0 });
+                        try {
+                            if (parser.evaluate(line.expression) == 1) {
+                                points.push({ x: i, y: j, connect: false, selected: false, debug: 0 });
+                            }
+                        }
+                        catch (e) {
+                            clearInterval(int);
+                            self.postMessage({
+                                points,
+                                finished: true
+                            });
+                            return;
                         }
                     }
                 }

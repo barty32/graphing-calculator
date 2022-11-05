@@ -1,4 +1,4 @@
-type AudioFn = (x: number) => (number | undefined);
+export type AudioFn = (x: number) => (number | undefined);
 
 export interface AudioSpec {
     waveType: string;

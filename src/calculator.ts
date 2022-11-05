@@ -1,6 +1,6 @@
 import { Graph } from './graph.js';
 import { ExpressionParser, ExpressionType, ParserFatalError, Severity, Variables, Functions, TokenType } from './parser.js';
-import { AudioManager, AudioSpec } from './audio.js';
+import { AudioManager, AudioSpec, AudioFn } from './audio.js';
 import DataConverter from './converter.js';
 import { IWorkerCalculateData, IWorkerUpdateFunctions, IWorkerReceiveData } from './worker.js';
 //import { MathfieldElement } from '../mathlive/dist/mathlive';
@@ -77,15 +77,15 @@ class Line{
     id: number;
     type: LineType;
     parser: ExpressionParser;
-    //expression: string = '';
-    //variables: { [key: string]: number } = {};
-    //data: number[] = [];
     worker?: Worker;
     calculating: boolean = false;
     audioData: AudioSpec;
     playing = false;
+    generated = false;
+    audioFn: AudioFn | undefined;
     isSimpleVariable = false;
     variableName = '';
+    editHandler: ((mathField: MathFieldMethods) => void ) = () => {};
 
     DOM = {
         subContainer: undefined as (HTMLDivElement | undefined),
@@ -166,7 +166,7 @@ class Line{
     }
 
     generateColor() {
-        return graphColors[Math.floor((Math.random() * 100) % graphColors.length)];//'#' + Math.floor(Math.random() * 16777215).toString(16);
+        return graphColors[Math.floor((Math.random() * 100) % graphColors.length)] ?? 'white';//'#' + Math.floor(Math.random() * 16777215).toString(16);
     }
 
     createWaveBox() {
@@ -338,8 +338,8 @@ class Line{
 
         this.DOM.slider.addEventListener('input', () => {
             //(this.DOM.subContainer?.querySelector('math-field') as MathfieldElement).setValue(this.variableName + '=' + this.DOM.slider?.value, {suppressChangeNotifications: false});
-            this.DOM.fnInput?.latex(this.variableName + '=');
-            this.DOM.fnInput?.typedText(this.DOM.slider?.value ?? '');
+            this.DOM.fnInput?.latex(this.variableName + '=' + this.DOM.slider?.value);
+            if(this.DOM.fnInput) this.editHandler(this.DOM.fnInput);
         });
 
 
@@ -390,6 +390,15 @@ class Line{
             //remove
             this.DOM.subContainer?.remove();
             this.worker?.terminate();
+            if (this.type == LineType.variable || this.type == LineType.function) {
+                delete this.parser.variables[this.variableName];
+                delete this.parser.functions[this.variableName];
+                for (const lnKey in lines) {
+                    const ln = lines[lnKey];
+                    ln?.updateWorkerFunctions();
+                    ln?.calculate();
+                }
+            }
             graph.removeLine(this.id);
             graph.draw();
             audioMgr.removeNode(this.id);
@@ -466,6 +475,7 @@ class Line{
         });
 
         dDownload.addEventListener('click', () => {
+            this.generateAudio();
             const blob = audioMgr.exportWAV(this.id);
             if (!blob) return;
             const file = URL.createObjectURL(blob);
@@ -491,10 +501,10 @@ class Line{
         fileInput.addEventListener('change', async () => {
             if (!fileInput.files?.length) return;
             //graph.attachArray(this.id, await DataConverter.convert(fileInput.files[0]));
-            DataConverter.convert(fileInput.files[0]).then((arr) => {
+            DataConverter.convert(fileInput.files[0]!).then((arr) => {
                 graph.attachData(this.id, arr);
             });
-            fileInput.files[0].arrayBuffer().then((data) => {
+            fileInput.files[0]!.arrayBuffer().then((data) => {
                 if (this.playing) this.toggleAudio();
                 const pr = audioMgr.addNode(this.id, this.audioData, undefined, data);
                 if (pr instanceof Promise<number | undefined>) {
@@ -525,17 +535,98 @@ class Line{
         const errorImg = document.createElement('img');
         errorImg.src = '/assets/images/warning.svg';
         errorImg.classList.add('error-img');
-        //const warningImg = document.createElement('img');
-        //warningImg.src = '/assets/images/warning.svg';
-        //warningImg.classList.add('warn-img');
         const errTooltip = document.createElement('span');
         errTooltip.classList.add('e-tooltip', 'rounded');
-        //const warnTooltip = document.createElement('span');
-        //warnTooltip.classList.add('w-tooltip', 'rounded');
-        //parent.appendChild(errorImg);
-        //parent.appendChild(errTooltip);
-        //parent.appendChild(warningImg);
-        //parent.appendChild(warnTooltip);
+
+        this.editHandler = (f: MathFieldMethods) => {
+            let error = false;
+            try {
+                if (this.type == LineType.variable)
+                    delete this.parser.variables[this.variableName];
+                if (this.type == LineType.function)
+                    delete this.parser.functions[this.variableName];
+                
+                //console.log('Latex: ' + f.latex());
+                const expression = this.parser.latexToString(f.latex());
+                //console.log('Expr: ' + expression);
+                this.parser.tokenize(expression).checkSyntax().parse();
+                delete this.parser.variables['x'];
+                delete this.parser.variables['y'];
+                switch (this.parser.getExpressionType()) {
+                    case ExpressionType.FUNCTION:
+                        if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(x):';
+                        this.parser.setVariable('x', 0);
+                        break;
+                    case ExpressionType.YFUNCTION:
+                        if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(y):';
+                        this.parser.setVariable('y', 0);
+                        break;
+                    case ExpressionType.EQUATION:
+                        if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(x,y):';
+                        this.parser.setVariable('x', 0);
+                        this.parser.setVariable('y', 0);
+                        break;
+                }
+                if (this.type == LineType.variable) {
+                    //simple variables (can have sliders)
+                    const match = /^([a-z])=([+\-]?[0-9.]+)$/i.exec(expression);
+                    if (match) {
+                        this.DOM.sliderGroup?.removeAttribute('hidden');
+                        this.variableName = match[1]!;
+                        if (this.DOM.slider) {
+                            this.DOM.slider.value = match[2]!;
+                        }
+                    }
+                    else {
+                        this.DOM.sliderGroup?.setAttribute('hidden', '');
+                        this.variableName = expression[0] ?? '';
+                    }
+                }
+                else if (this.type == LineType.function) {
+                    const match = /^([a-z]+)/i.exec(expression);
+                    if (match) {
+                        this.variableName = match[1]!;
+                    }
+                    else {
+                        this.variableName = '';
+                    }
+                }
+                this.parser.evaluate();
+            }
+            catch (e) {
+                if (!(e instanceof ParserFatalError)) {
+                    throw e;
+                }
+                error = true;
+                graph.draw(true);
+            }
+
+            errTooltip.innerHTML = '';
+            for (const err of this.parser.problems) {
+                if (err.severity >= Severity.ERROR) {
+                    errTooltip.innerHTML += err.desc + '<br>';
+                }
+            }
+            errorImg.style.display = errTooltip.innerHTML ? 'block' : 'none';
+            fnInput.style.color = errTooltip.innerHTML ? 'red' : '';
+
+            if (this.type == LineType.function || this.type == LineType.variable) {
+                //update ALL workers
+                for (const lnKey in lines) {
+                    const ln = lines[lnKey];
+                    ln?.updateWorkerFunctions();
+                    ln?.calculate();
+                }
+            }
+
+            if (error) return;
+
+            if (this.type == LineType.expression) {
+                this.calculate();
+                //graph.attachExpression(this.id, this.parser.outputQueue, { degrees: degrees ? 1 : 0, res: Math.min(graph.xScale, graph.yScale) });
+                this.audioDataChanged();
+            }
+        }
         
         this.DOM.fnInput = MQ.MathField(fnInput, {
             leftRightIntoCmdGoes: 'up',
@@ -554,88 +645,7 @@ class Line{
             autoCommands: 'pi tau infinity infty sqrt sum prod coprod int',
             autoOperatorNames: this.parser.getSupportedFunctions(),
             handlers: {
-                edit: (f: MathFieldMethods) => {
-                    try {
-                        console.log('Latex: ' + f.latex());
-                        const expression = this.parser.latexToString(f.latex());
-                        console.log('Expr: ' + expression);
-                        this.parser.tokenize(expression).checkSyntax().parse();
-                        switch (this.parser.getExpressionType()) {
-                            case ExpressionType.FUNCTION:
-                                if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(x):';
-                                this.parser.setVariable('x', 0);
-                                break;
-                            case ExpressionType.YFUNCTION:
-                                if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(y):';
-                                this.parser.setVariable('y', 0);
-                                break;
-                            case ExpressionType.EQUATION:
-                                if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(x,y):';
-                                this.parser.setVariable('x', 0);
-                                this.parser.setVariable('y', 0);
-                                break;
-                        }
-                        this.parser.evaluate();
-                        errTooltip.innerHTML = '';
-                        //warnTooltip.innerHTML = '';
-                        //for (const err of this.parser.problems) {
-                        //    if (err.severity == Severity.WARNING) {
-                        //        warnTooltip.innerHTML += err.desc + '<br>';
-                        //    }
-                        //}
-                        errorImg.style.display = 'none';
-                        //warningImg.style.transform = 'none';
-                        //warningImg.style.display = warnTooltip.innerHTML ? 'block' : 'none';
-                        //fnInput.style.color = warnTooltip.innerHTML ? 'orange' : 'black';
-                    }
-                    catch (e) {
-                        if (!(e instanceof ParserFatalError)) {
-                            throw e;
-                        }
-                        errTooltip.innerHTML = (e as Error).message + '<br>';
-                        //warnTooltip.innerHTML = '';
-                        for (const err of this.parser.problems) {
-                            if (err.severity >= Severity.ERROR) {
-                                errTooltip.innerHTML += err.desc + '<br>';
-                            }
-                            //else if (err.severity == Severity.WARNING) {
-                            //    warnTooltip.innerHTML += err.desc + '<br>';
-                            //}
-                        }
-                        errorImg.style.display = 'block';
-                        //warningImg.style.transform = 'translateX(-27px)';
-                        //warningImg.style.display = warnTooltip.innerHTML ? 'block' : 'none';
-                        //fnInput.style.color = errTooltip.innerHTML ? 'red' : warnTooltip.innerHTML ? 'orange' : 'black';
-                        graph.draw(true);
-                        return;
-                    }
-                    if (this.type == LineType.expression) {
-                        this.calculate();
-                        //graph.attachExpression(this.id, this.parser.outputQueue, { degrees: degrees ? 1 : 0, res: Math.min(graph.xScale, graph.yScale) });
-                        this.audioDataChanged();
-                    }
-                    else if (this.type == LineType.function || this.type == LineType.variable) {
-                        //update ALL workers
-                        for (const lnKey in lines) {
-                            const ln = lines[lnKey];
-                            ln?.updateWorkerFunctions();
-                            ln?.calculate();
-                        }
-                    }
-                    //simple variables (can have sliders)
-                    const match = /^([a-z])=([+\-]?[0-9]+)/i.exec(f.latex());
-                    if (match && this.type == LineType.variable) {
-                        this.DOM.sliderGroup?.removeAttribute('hidden');
-                        this.variableName = match[1];
-                        if (this.DOM.slider) {
-                            this.DOM.slider.value = match[2];
-                        }
-                    }
-                    else {
-                        this.DOM.sliderGroup?.setAttribute('hidden', '');
-                        this.variableName = '';
-                    }
-                }
+                edit: this.editHandler
             }
         });
         fnInput.appendChild(errorImg);
@@ -666,6 +676,7 @@ class Line{
     toggleAudio() {
         const boxBtn = this.DOM.audioBtn;
         const topBtn = DOM.btnPlay;
+        this.generateAudio();
 
         if (this.playing) {
             this.playing = false;
@@ -685,9 +696,20 @@ class Line{
         }
     }
 
-    audioDataChanged() {
+    private generateAudio() {
+        if (!this.generated) {
+            const res = audioMgr.addNode(this.id, this.audioData, this.audioFn);
+            if (typeof res == 'boolean' && res == true) {
+                this.DOM.clipping?.removeAttribute('hidden');
+            }
+            else {
+                this.DOM.clipping?.setAttribute('hidden', '');
+            }
+            this.generated = true;
+        }
+    }
 
-        let fn;
+    audioDataChanged() {
         switch (this.audioData.waveType) {
             case 'sine':
                 this.parser.outputQueue = [{
@@ -732,20 +754,19 @@ class Line{
                 break;
             case 'custom':
                 if (this.playing) this.toggleAudio();
-                fn = (x: number) => {
-                    this.parser.setVariable('x', x);
-                    return this.parser.evaluate();
+                this.audioFn = (x) => {
+                    try {
+                        this.parser.setVariable('x', x);
+                        return this.parser.evaluate();
+                    }
+                    catch (e) {
+                        return undefined;
+                    }
                 };
+                this.generated = false;
                 break;
             default:
                 //graph.attachFn(this.id, () => undefined, ExpressionType.FUNCTION);
-        }
-        const res = audioMgr.addNode(this.id, this.audioData, fn);
-        if (typeof res == 'boolean' && res == true) {
-            this.DOM.clipping?.removeAttribute('hidden');
-        }
-        else {
-            this.DOM.clipping?.setAttribute('hidden', '');
         }
         if (this.playing) audioMgr.startNode(this.id);
         graph.draw();
@@ -777,6 +798,10 @@ class Line{
                 functions: this.parser.functions
             } as IWorkerUpdateFunctions
         });
+        for (const line in lines) {
+            if (lines[line]!.DOM.fnInput && lines[line]!.type == LineType.expression)
+                lines[line]!.editHandler(lines[line]!.DOM.fnInput!);
+        }
     }
 
     updateWorkerRules() {
@@ -787,16 +812,13 @@ class Line{
     }
 }
 
-//const MQ = MathQuill.getInterface(2);
 const audioMgr = new AudioManager();
 var lines: { [index: number]: Line | undefined } = {};
-//const MQ = MathQuill.getInterface(2);
 var variables: Variables = {};
 var functions: Functions = {};
 
 var idCounter = -1;
 var currentEditedLine: Line;
-//var degrees = false;
 
 const graph = new Graph(document.querySelector('#graph') as HTMLCanvasElement);
 graph.draw();

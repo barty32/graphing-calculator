@@ -3,8 +3,9 @@ import { ExpressionParser, ExpressionType, ParserFatalError, Severity, Variables
 import { AudioManager, AudioSpec } from './audio.js';
 import DataConverter from './converter.js';
 import { IWorkerCalculateData, IWorkerUpdateFunctions, IWorkerReceiveData } from './worker.js';
-import { MathfieldElement } from '../mathlive/dist/mathlive';
+//import { MathfieldElement } from '../mathlive/dist/mathlive';
 //import type { MathfieldElement } from 'mathlive/dist/types/mathlive/mathlive';
+import { MathFieldMethods, MQ } from '../mathquill/mathquill.mod.js';
 
 enum LineType{
     expression,
@@ -94,7 +95,8 @@ class Line{
         sliderGroup: undefined as (HTMLDivElement | undefined),
         sliderSetup: undefined as (HTMLDivElement | undefined),
         slider: undefined as (HTMLInputElement | undefined),
-        clipping: undefined as (HTMLDivElement | undefined)
+        clipping: undefined as (HTMLDivElement | undefined),
+        fnInput: undefined as (MathFieldMethods | undefined)
     }
 
     constructor(type: LineType) {
@@ -147,23 +149,6 @@ class Line{
             };
 
             this.updateWorkerFunctions();
-            // line.expression = expression;
-            // line.variables = variables;
-
-            // this.calculate(2);
-
-            // const data: IWorkerSendData = {
-            //     expression,
-            //     width: this.width,
-            //     height: this.height,
-            //     xOffset: this.xOffset,
-            //     yOffset: this.yOffset,
-            //     xScale: this.xScale,
-            //     yScale: this.yScale,
-            //     ID: id,
-            //     variables
-            // }
-            // worker.postMessage(data);
         }
         if (this.type == LineType.audio) {
             this.audioDataChanged();
@@ -193,6 +178,10 @@ class Line{
         row1.classList.add('input-group');
 
         if (this.type == LineType.variable || this.type == LineType.function) {
+            this.DOM.fnType = document.createElement('span');
+            this.DOM.fnType.classList.add('input-group-text', 'input-label-box', 'user-select-none');
+            this.DOM.fnType.innerHTML = this.type == LineType.variable ? 'Var:' : 'Fn:';
+            row1.appendChild(this.DOM.fnType);
             this.addMathInput(row1);
         }
         else if (this.type == LineType.audio) {
@@ -220,7 +209,6 @@ class Line{
                 this.DOM.fnType.classList.add('input-group-text', 'input-label-box', 'user-select-none');
                 this.DOM.fnType.innerHTML = 'f(x):';
                 row2.appendChild(this.DOM.fnType);
-                //this.addExpressionType();
                 this.addMathInput(row2);
                 this.DOM.subContainer.appendChild(row2);
             }
@@ -305,32 +293,6 @@ class Line{
         parent.appendChild(idInput);
     }
 
-    // addVariableInput(parent: HTMLElement) {
-    //     const varInput = document.createElement('select');
-    //     varInput.classList.add('form-select');
-    //     varInput.style.maxWidth = '70px';
-
-    //     const letters = ['a', 'b', 'c', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'z'];
-    //     for (const letter of letters){
-    //         if (variables[letter] === undefined) {
-    //             const opt = document.createElement('option');
-    //             opt.innerText = letter;
-    //             opt.value = letter;
-    //             varInput.options.add(opt);
-    //         }
-    //     }
-    //     const eq = document.createElement('span');
-    //     eq.classList.add('input-group-text', 'input-label-box');
-    //     eq.innerHTML = '=';
-
-    //     const numInput = document.createElement('input');
-    //     numInput.type = 'number';
-    //     numInput.classList.add('form-control');
-    //     parent.appendChild(varInput);
-    //     parent.appendChild(eq);
-    //     parent.appendChild(numInput);
-    // }
-
     addVariableSlider(parent: HTMLElement) {
         this.DOM.sliderGroup = document.createElement('div');
         this.DOM.sliderSetup = document.createElement('div');
@@ -375,7 +337,9 @@ class Line{
         });
 
         this.DOM.slider.addEventListener('input', () => {
-            (this.DOM.subContainer?.querySelector('math-field') as MathfieldElement).setValue(this.variableName + '=' + this.DOM.slider?.value, {suppressChangeNotifications: false});
+            //(this.DOM.subContainer?.querySelector('math-field') as MathfieldElement).setValue(this.variableName + '=' + this.DOM.slider?.value, {suppressChangeNotifications: false});
+            this.DOM.fnInput?.latex(this.variableName + '=');
+            this.DOM.fnInput?.typedText(this.DOM.slider?.value ?? '');
         });
 
 
@@ -552,117 +516,130 @@ class Line{
     }
 
     addMathInput(parent: HTMLElement) {
-        
-        const errorImg = document.createElement('img');
-        errorImg.src = '/assets/images/error.svg';
-        errorImg.classList.add('error-img');
-        const warningImg = document.createElement('img');
-        warningImg.src = '/assets/images/warning.svg';
-        warningImg.classList.add('warn-img');
-        const errTooltip = document.createElement('span');
-        errTooltip.classList.add('e-tooltip', 'rounded');
-        const warnTooltip = document.createElement('span');
-        warnTooltip.classList.add('w-tooltip', 'rounded');
-        parent.appendChild(errorImg);
-        parent.appendChild(errTooltip);
-        parent.appendChild(warningImg);
-        parent.appendChild(warnTooltip);
 
         //$$ test\left(a,b\right)=\operatorname{sin}\left(a\right)+b $$
-        const fnInput = new MathfieldElement();//document.createElement('math-field');//input
-        //fnInput.type = 'text';
-        fnInput.contentEditable = 'true';
-        //fnInput.spellcheck = false;
+        const fnInput = document.createElement('span');
+        fnInput.classList.add('form-control', 'd-flex');
         fnInput.id = `expr-input-${this.id}`;
-        fnInput.classList.add('form-control');
 
-        fnInput.addEventListener('input', () => {
-            try {
-                console.log('Latex: ' + fnInput.getValue('latex-unstyled'));
-                const expression = this.parser.latexToString(fnInput.getValue('latex-unstyled'));
-                console.log('Expr: ' + expression);
-                this.parser.tokenize(expression).checkSyntax().parse();
-                switch (this.parser.getExpressionType()) {
-                    case ExpressionType.FUNCTION:
-                        if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(x):';
-                        this.parser.setVariable('x', 0);
-                        break;
-                    case ExpressionType.YFUNCTION:
-                        if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(y):';
-                        this.parser.setVariable('y', 0);
-                        break;
-                    case ExpressionType.EQUATION:
-                        if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(x,y):';
-                        this.parser.setVariable('x', 0);
-                        this.parser.setVariable('y', 0);
-                        break;
-                }
-                this.parser.evaluate();
-                errTooltip.innerHTML = '';
-                warnTooltip.innerHTML = '';
-                for (const err of this.parser.problems) {
-                    if (err.severity == Severity.WARNING) {
-                        warnTooltip.innerHTML += err.desc + '<br>';
+        const errorImg = document.createElement('img');
+        errorImg.src = '/assets/images/warning.svg';
+        errorImg.classList.add('error-img');
+        //const warningImg = document.createElement('img');
+        //warningImg.src = '/assets/images/warning.svg';
+        //warningImg.classList.add('warn-img');
+        const errTooltip = document.createElement('span');
+        errTooltip.classList.add('e-tooltip', 'rounded');
+        //const warnTooltip = document.createElement('span');
+        //warnTooltip.classList.add('w-tooltip', 'rounded');
+        //parent.appendChild(errorImg);
+        //parent.appendChild(errTooltip);
+        //parent.appendChild(warningImg);
+        //parent.appendChild(warnTooltip);
+        
+        this.DOM.fnInput = MQ.MathField(fnInput, {
+            leftRightIntoCmdGoes: 'up',
+            restrictMismatchedBrackets: true,
+            sumStartsWithNEquals: true,
+            supSubsRequireOperand: true,
+            charsThatBreakOutOfSupSub: '+-=<>',
+            autoSubscriptNumerals: false,
+            // substituteTextArea: () => {
+            //    const el = document.createElement('span');
+            //    el.id = "testcustomid";
+            //    el.classList.add('form-control')
+            //    el.tabIndex = 0;
+            //    return el;
+            // },
+            autoCommands: 'pi tau infinity infty sqrt sum prod coprod int',
+            autoOperatorNames: this.parser.getSupportedFunctions(),
+            handlers: {
+                edit: (f: MathFieldMethods) => {
+                    try {
+                        console.log('Latex: ' + f.latex());
+                        const expression = this.parser.latexToString(f.latex());
+                        console.log('Expr: ' + expression);
+                        this.parser.tokenize(expression).checkSyntax().parse();
+                        switch (this.parser.getExpressionType()) {
+                            case ExpressionType.FUNCTION:
+                                if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(x):';
+                                this.parser.setVariable('x', 0);
+                                break;
+                            case ExpressionType.YFUNCTION:
+                                if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(y):';
+                                this.parser.setVariable('y', 0);
+                                break;
+                            case ExpressionType.EQUATION:
+                                if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(x,y):';
+                                this.parser.setVariable('x', 0);
+                                this.parser.setVariable('y', 0);
+                                break;
+                        }
+                        this.parser.evaluate();
+                        errTooltip.innerHTML = '';
+                        //warnTooltip.innerHTML = '';
+                        //for (const err of this.parser.problems) {
+                        //    if (err.severity == Severity.WARNING) {
+                        //        warnTooltip.innerHTML += err.desc + '<br>';
+                        //    }
+                        //}
+                        errorImg.style.display = 'none';
+                        //warningImg.style.transform = 'none';
+                        //warningImg.style.display = warnTooltip.innerHTML ? 'block' : 'none';
+                        //fnInput.style.color = warnTooltip.innerHTML ? 'orange' : 'black';
+                    }
+                    catch (e) {
+                        if (!(e instanceof ParserFatalError)) {
+                            throw e;
+                        }
+                        errTooltip.innerHTML = (e as Error).message + '<br>';
+                        //warnTooltip.innerHTML = '';
+                        for (const err of this.parser.problems) {
+                            if (err.severity >= Severity.ERROR) {
+                                errTooltip.innerHTML += err.desc + '<br>';
+                            }
+                            //else if (err.severity == Severity.WARNING) {
+                            //    warnTooltip.innerHTML += err.desc + '<br>';
+                            //}
+                        }
+                        errorImg.style.display = 'block';
+                        //warningImg.style.transform = 'translateX(-27px)';
+                        //warningImg.style.display = warnTooltip.innerHTML ? 'block' : 'none';
+                        //fnInput.style.color = errTooltip.innerHTML ? 'red' : warnTooltip.innerHTML ? 'orange' : 'black';
+                        graph.draw(true);
+                        return;
+                    }
+                    if (this.type == LineType.expression) {
+                        this.calculate();
+                        //graph.attachExpression(this.id, this.parser.outputQueue, { degrees: degrees ? 1 : 0, res: Math.min(graph.xScale, graph.yScale) });
+                        this.audioDataChanged();
+                    }
+                    else if (this.type == LineType.function || this.type == LineType.variable) {
+                        //update ALL workers
+                        for (const lnKey in lines) {
+                            const ln = lines[lnKey];
+                            ln?.updateWorkerFunctions();
+                            ln?.calculate();
+                        }
+                    }
+                    //simple variables (can have sliders)
+                    const match = /^([a-z])=([+\-]?[0-9]+)/i.exec(f.latex());
+                    if (match && this.type == LineType.variable) {
+                        this.DOM.sliderGroup?.removeAttribute('hidden');
+                        this.variableName = match[1];
+                        if (this.DOM.slider) {
+                            this.DOM.slider.value = match[2];
+                        }
+                    }
+                    else {
+                        this.DOM.sliderGroup?.setAttribute('hidden', '');
+                        this.variableName = '';
                     }
                 }
-                errorImg.style.display = 'none';
-                warningImg.style.transform = 'none';
-                warningImg.style.display = warnTooltip.innerHTML ? 'block' : 'none';
-                fnInput.style.color = warnTooltip.innerHTML ? 'orange' : 'black';
-            }
-            catch (e) {
-                if (!(e instanceof ParserFatalError)) {
-                    throw e;
-                }
-                errTooltip.innerHTML = (e as Error).message + '<br>';
-                warnTooltip.innerHTML = '';
-                for (const err of this.parser.problems) {
-                    if (err.severity >= Severity.ERROR) {
-                        errTooltip.innerHTML += err.desc + '<br>';
-                    }
-                    else if (err.severity == Severity.WARNING) {
-                        warnTooltip.innerHTML += err.desc + '<br>';
-                    }
-                }
-                errorImg.style.display = 'block';
-                warningImg.style.transform = 'translateX(-27px)';
-                warningImg.style.display = warnTooltip.innerHTML ? 'block' : 'none';
-                fnInput.style.color = errTooltip.innerHTML ? 'red' : warnTooltip.innerHTML ? 'orange' : 'black';
-                graph.draw(true);
-                return;
-            }
-            if (this.type == LineType.expression) {
-                this.calculate();
-                //graph.attachExpression(this.id, this.parser.outputQueue, { degrees: degrees ? 1 : 0, res: Math.min(graph.xScale, graph.yScale) });
-                this.audioDataChanged();
-            }
-            else if (this.type == LineType.function || this.type == LineType.variable) {
-                //update ALL workers
-                for (const lnKey in lines) {
-                    const ln = lines[lnKey];
-                    ln?.updateWorkerFunctions();
-                    ln?.calculate();
-                }
-            }
-            //simple variables (can have sliders)
-            if (this.type == LineType.variable && ///^[a-z]=[0-9]*/i.test(expression) &&
-                this.parser.outputQueue[0]?.type == TokenType.VARIABLE &&
-                this.parser.outputQueue[1]?.type == TokenType.OPERATOR &&
-                this.parser.outputQueue[1]?.name == '=' &&
-                this.parser.outputQueue[2]?.type == TokenType.NUMBER &&
-                this.parser.outputQueue[3] === undefined
-            ) {
-                this.DOM.sliderGroup?.removeAttribute('hidden');
-                this.variableName = this.parser.outputQueue[0].name;
-                if (this.DOM.slider && this.parser.outputQueue[2].value)
-                    this.DOM.slider.value = this.parser.outputQueue[2].value?.toString();
-            }
-            else {
-                this.isSimpleVariable = false;
-                this.DOM.sliderGroup?.setAttribute('hidden', '');
-                this.variableName = '';
             }
         });
+        fnInput.appendChild(errorImg);
+        fnInput.appendChild(errTooltip);
         parent.appendChild(fnInput);
     }
 
@@ -775,7 +752,6 @@ class Line{
     }
 
     calculate() {
-        //console.log('calculating data for ' + this.name);
         if (!this.calculating && this.worker) {
             this.calculating = true;
             this.worker.postMessage({
@@ -814,7 +790,7 @@ class Line{
 //const MQ = MathQuill.getInterface(2);
 const audioMgr = new AudioManager();
 var lines: { [index: number]: Line | undefined } = {};
-
+//const MQ = MathQuill.getInterface(2);
 var variables: Variables = {};
 var functions: Functions = {};
 

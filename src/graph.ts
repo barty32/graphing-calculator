@@ -306,7 +306,7 @@ export class Graph {
                 str += String.fromCharCode(0x207B);
                 continue;
             }
-            str += String.fromCharCode(convert[parseInt(char)]);//8320, 8304
+            str += String.fromCharCode(convert[parseInt(char)]!);//8320, 8304
         }
         return str;
     }
@@ -318,13 +318,13 @@ export class Graph {
         if (value == 0) return '0';
         else if (valueAbs < 1e-5 || valueAbs >= 1e6) {
             let str = value.toExponential(2).split('e');
-            while (str[0].at(-1) == '0' || str[0].at(-1) == '.') {
-                str[0] = str[0].slice(0, -1);
+            while (str[0]!.at(-1) == '0' || str[0]!.at(-1) == '.') {
+                str[0] = str[0]!.slice(0, -1);
             }
-            if (str[1][0] == '+') {
-                str[1] = str[1].slice(1);
+            if (str[1]![0] == '+') {
+                str[1] = str[1]!.slice(1);
             }
-            return `${str[0]}·10${this.toSup(str[1])}`;
+            return `${str[0]}·10${this.toSup(str[1]!)}`;
         }
         let str = value.toString();
         if (str.includes('.')) {
@@ -361,12 +361,12 @@ export class Graph {
 
 
         if (this.evCache.length === 2) {
-            if (this.isPointOnAxis(this.evCache[0].clientX, 'x') && this.isPointOnAxis(this.evCache[1].clientX, 'x')) {
+            if (this.isPointOnAxis(this.evCache[0]!.clientX, 'x') && this.isPointOnAxis(this.evCache[1]!.clientX, 'x')) {
                 this.scaleXAxis = true;
             } else {
                 this.scaleXAxis = false;
             }
-            if (this.isPointOnAxis(this.evCache[0].clientY, 'y') && this.isPointOnAxis(this.evCache[1].clientY, 'y')) {
+            if (this.isPointOnAxis(this.evCache[0]!.clientY, 'y') && this.isPointOnAxis(this.evCache[1]!.clientY, 'y')) {
                 this.scaleYAxis = true;
             } else {
                 this.scaleYAxis = false;
@@ -390,7 +390,7 @@ export class Graph {
         this.canvas.releasePointerCapture(e.pointerId);
         delete this.evPrevCache[e.pointerId];
         for (let i = 0; i < this.evCache.length; i++) {
-            if (this.evCache[i].pointerId === e.pointerId) {
+            if (this.evCache[i]!.pointerId === e.pointerId) {
                 this.evCache.splice(i, 1);
                 break;
             }
@@ -405,11 +405,11 @@ export class Graph {
 
     private onPointerMove(e: PointerEvent) {
         for (let i = 0; i < this.evCache.length; i++) {
-            if (e.pointerId === this.evCache[i].pointerId) {
+            if (e.pointerId === this.evCache[i]!.pointerId) {
                 this.evCache[i] = e;
                 if (this.moving) {
-                    const movementX = this.evCache[i].clientX - this.evPrevCache[e.pointerId].clientX;//this.prevX;
-                    const movementY = this.evCache[i].clientY - this.evPrevCache[e.pointerId].clientY;//this.prevY;
+                    const movementX = this.evCache[i]!.clientX - this.evPrevCache[e.pointerId]!.clientX;//this.prevX;
+                    const movementY = this.evCache[i]!.clientY - this.evPrevCache[e.pointerId]!.clientY;//this.prevY;
                     //console.log(`movex:${movementX},movey${movementY}`);
                     this.move(movementX / this.evCache.length, movementY / this.evCache.length);
                 }
@@ -439,10 +439,10 @@ export class Graph {
 
         if (this.evCache.length === 2) {
             // Calculate the distance between the two pointers
-            const curDist = this.getTouchDistance(this.evCache[0].clientX, this.evCache[0].clientY, this.evCache[1].clientX, this.evCache[1].clientY);
+            const curDist = this.getTouchDistance(this.evCache[0]!.clientX, this.evCache[0]!.clientY, this.evCache[1]!.clientX, this.evCache[1]!.clientY);
 
             if (this.lastDistance > 0) {
-                const center = this.getTouchCenter(this.evCache[0].clientX, this.evCache[0].clientY, this.evCache[1].clientX, this.evCache[1].clientY);
+                const center = this.getTouchCenter(this.evCache[0]!.clientX, this.evCache[0]!.clientY, this.evCache[1]!.clientX, this.evCache[1]!.clientY);
                 this.zoom(curDist, center.x, center.y, this.scaleXAxis, this.scaleYAxis, true);
             }
             this.lastDistance = curDist;

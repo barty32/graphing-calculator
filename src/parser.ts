@@ -13,6 +13,13 @@ export class ParserFatalError extends Error {
     }
 }
 
+export class LatexParseError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'LatexParseError';
+    }
+}
+
 export enum Severity{
     INFO,
     WARNING,
@@ -58,6 +65,7 @@ export interface SpecialRules{
     isCustomFunction: boolean;
     isCustomVariable: boolean;
     useDegrees: boolean;
+    resulution: number;
 }
 
 export type Variables = { [key: string]: Token[] };
@@ -157,10 +165,10 @@ const functions: { [key: string]: {argc: number, fn: (args: number[]) => number,
     //special functions (they need custom implementation)
     'sum':        { argc: 4, type: 'spec', fn: () => 0 },
     'prod':       { argc: 4, type: 'spec', fn: () => 0 },
-    'derivative': { argc: 1, type: 'spec', fn: () => 0 },
-    'der':        { argc: 1, type: 'spec', fn: () => 0 },
-    'integrate':  { argc: 1, type: 'spec', fn: () => 0 },
-    'int':        { argc: 1, type: 'spec', fn: () => 0 }
+    'derivative': { argc: 2, type: 'spec', fn: () => 0 },
+    'der':        { argc: 2, type: 'spec', fn: () => 0 },
+    'integrate':  { argc: 4, type: 'spec', fn: () => 0 },
+    'int':        { argc: 4, type: 'spec', fn: () => 0 }
 };
 
 const operators: { [key: string]: { argc: number, fn: (args: number[]) => number, precedence: number, assoc: 'left' | 'right' | 'none' }} = {
@@ -220,7 +228,8 @@ export class ExpressionParser{
     rules: SpecialRules = {
         isCustomFunction: false,
         isCustomVariable: false,
-        useDegrees: false
+        useDegrees: false,
+        resulution: 0
     };
 
     problems: Problem[] = [];
@@ -237,10 +246,10 @@ export class ExpressionParser{
         input = input.replaceAll(/(\\left)|(\\right)/g, '');
 
         //basic functions
-        input = input.replaceAll(/\\(sin|cos|tan|max|min|ln|log|exp)/g, (_, p1) => ` ${p1}`);
+        input = input.replaceAll(/\\(sin|cos|tan|max|min|ln|log|exp|arcsin|arccos|arctan|sinh|cosh|tanh|sec|csc|cot|coth|cosec|cotan|ctg|arg|deg|det|dim|gcd|hom|inf|ker|lg|lim|sup)/g, (_, p1) => ` ${p1}`);
 
         //any other function
-        input = input.replaceAll(/\\operatorname{([^}]*)}/g, (_, p1) => ` ${p1}`);
+        input = input.replaceAll(/\\operatorname{([^{}]*)}/g, (_, p1) => ` ${p1}`);
 
         //pi, tau, infinity, (theta)
         input = input.replaceAll(/\\(pi|tau|infty)/g, (_, p1) => ` ${p1}`);
@@ -266,20 +275,29 @@ export class ExpressionParser{
             input = input.replaceAll(/\\frac{([^{}]*)}{([^{}]*)}/g, (_, p1, p2) => `(${p1})/(${p2})`);
 
             //sqrt
-            input = input.replaceAll(/\\sqrt{([^{}]*)}/g, (_, p1) => ` sqrt(${p1})`);
+            input = input.replaceAll(/\\sqrt{([^{}]*)}/g, (_, p1) => `sqrt(${p1})`);
 
             //sum, prod, coprod
-            input = input.replaceAll(/\\(sum|prod|coprod)(?:(?:_{(?:([^{}=]*)=)?([^{}]*)})|_(.))(?:(?:\^{([^{}]*)})|\^(.))/g, (_, p1, p2, p3, p4, p5, p6) => `${p1}(${p3 ?? p4}, ${p5 ?? p6}, ${p2 ?? ''}, `);
+            input = input.replaceAll(/\\(sum|prod|coprod)(?:(?:_{(?:([^{}=]*)=)?([^{}]*)})|_(.))(?:(?:\^{([^{}]*)})|\^(.))/g, (_, p1, p2, p3, p4, p5, p6) => `${p1}(${p3 ?? p4},${p5 ?? p6},${p2 ?? ''},`);
+
+            //int
+            input = input.replaceAll(/\\int(?:(?:_{([^{}]*)})|_(.))(?:(?:\^{([^{}]*)})|\^(.))(?:(.*)d([a-z]))?/g, (_, p1, p2, p3, p4, p5, p6) => `int(${p1 ?? p2},${p3 ?? p4},${p6},${p5})`);
+
+            //derivative
+            input = input.replaceAll(/\(d\)\/\(d([a-z])\)/g, (_, p1) => `derivative(${p1},`);
+
+            //power
+            input = input.replaceAll(/\^{([^{}]*)}/g, (_, p1) => `^(${p1})`);
 
             //x+\text{test}g\cdot x
             res = /\\([a-z]*)/gi.exec(input);
-            if (res && !/frac|sqrt|sum|prod|coprod/g.test(res[1]!)) {
-                throw new ParserFatalError(`Unsupported LaTeX command '${res[1]}'.`);
+            if (res && !/frac|sqrt|sum|prod|coprod|int/g.test(res[1]!)) {
+                throw new LatexParseError(`Unsupported LaTeX command '${res[1]}'.`);
             }
             
             iter++;
             if (iter > 500) {
-                throw new ParserFatalError(`Script was stuck in a loop. This is probably a bug. Try changing syntax.`);
+                throw new LatexParseError(`Script was stuck in a loop. This is probably a bug. Try changing syntax.`);
             }
         } while (res);
 
@@ -557,7 +575,7 @@ export class ExpressionParser{
                     }
 
                     //add second (missing) parenthesis
-                    if (token.name == 'sum' || token.name == 'prod') {
+                    if (token.name == 'sum' || token.name == 'prod' || token.name == 'derivative') {
                         let scope = 0;
                         let commas = 0;
                         let endPos = tokens.length;
@@ -988,11 +1006,13 @@ export class ExpressionParser{
                     //sawtooth: $$ -\frac{2}{\pi}\sum_{n=1}^{10}\frac{-1^n}{n}\operatorname{sin}\left(2\pi nx\right) $$
                     //square
                     //sin(x)+1/3sin(3x)+1/5sin(5x)+1/7sin(7x)+1/9sin(9x)+1/11sin(11x)+1/13sin(13x)+1/15sin(15x)+1/17sin(17x)+1/19sin(19x)+1/21sin(21x)
+                    // sum(from, to, var, expr)
                     if (token.name == 'sum' || token.name == 'prod') {
                         const start = this.evaluateInternal(token.arguments[0]);
                         const end = this.evaluateInternal(token.arguments[1]);
                         if (token.arguments[2]?.length !== 1 || token.arguments[2][0]?.type != TokenType.VARIABLE) {
                             this.problems.push(problem(token.pos, 1, Severity.ERROR, `Second argument to '${token.name}' function must be a variable name (for example 'n').`));
+                            throw new ParserFatalError('Evaluate error');
                         }
                         const variable = token.arguments[2]![0]!.name;
                         let oldvar = this.variables[variable];
@@ -1016,31 +1036,56 @@ export class ExpressionParser{
                         break;
                     }
                     else if (token.name == 'der' || token.name == 'derivative') {
-                        //const vars = structuredClone(variables);
-                        const prevX = this.variables['x']![0]!.value;
-                        const y1 = this.evaluateInternal(token.arguments[0]);
+                        if (token.arguments[0]?.length !== 1 || token.arguments[0][0]?.type != TokenType.VARIABLE) {
+                            this.problems.push(problem(token.pos, 1, Severity.ERROR, `Second argument to '${token.name}' function must be a derivation variable name (for example 't').`));
+                            throw new ParserFatalError('Evaluate error');
+                        }
+                        const variable = token.arguments[0][0].name;
+                        const prevX = this.getVariable(variable);
+                        if (!prevX) {
+                            tmpStack.push(Infinity);
+                            break;
+                        }
+                        const y1 = this.evaluateInternal(token.arguments[1]);
                         const dx = 1e-6;
-                        this.variables['x']![0]!.value! -= dx;
-                        const y2 = this.evaluateInternal(token.arguments[0]);
-                        this.variables['x']![0]!.value = prevX;
+                        this.setVariable(variable, prevX - dx);
+                        const y2 = this.evaluateInternal(token.arguments[1]);
+                        this.setVariable(variable, prevX);
                         tmpStack.push((y1 - y2) / dx);
                         break;
                     }
-                        //integrate(expr)
+                    // integrate(from, to, var, expr)
                     else if (token.name == 'int' || token.name == 'integrate') {
-                    //     const vars = structuredClone(variables);
-                    //     // const dx = 1e-6;
-                    //     // vars['x'] -= dx;
-                    //     // const y1 = this.evaluate(variables, token.arguments![0]);
-                    //     // const y2 = this.evaluate(vars, token.arguments![0]);
-                    //     // tmpStack.push((y1) * dx);
-                    //     let result = 0;
-                    //     for (let i = 0; i < variables['x']; i += 1 / variables['res']){
-                    //         vars['x'] = i;
-                    //         result += 1 / variables['res'] * this.evaluateInternal(vars, token.arguments[0]);
-                    //     }
-                    //    tmpStack.push(result);
-                       break;
+                        const start = this.evaluateInternal(token.arguments[0]);
+                        const end = this.evaluateInternal(token.arguments[1]);
+                        if (token.arguments[2]?.length !== 1 || token.arguments[2][0]?.type != TokenType.VARIABLE) {
+                            this.problems.push(problem(token.pos, 1, Severity.ERROR, `Second argument to '${token.name}' function must be a integration variable name (for example 't').`));
+                            throw new ParserFatalError('Evaluate error');
+                        }
+                        const variable = token.arguments[2][0].name;
+                        const oldvar = this.getVariable(variable);
+                        const step = this.rules.resulution;
+                        let result = 0;
+                        if (end < start) {
+                            for (let i = start; i > end; i -= step) {
+                                this.setVariable(variable, i);
+                                result += -step * this.evaluateInternal(token.arguments[3]);
+                            }
+                        }
+                        else {
+                            for (let i = start; i < end; i += step) {
+                                this.setVariable(variable, i);
+                                result += step * this.evaluateInternal(token.arguments[3]);
+                            }
+                        }
+                        if (oldvar) {
+                            this.setVariable(variable, oldvar);
+                        }
+                        else {
+                            this.deleteVariable(variable);
+                        }
+                        tmpStack.push(result);
+                        break;
                     }
 
                     // if (token.name == 'log') {
@@ -1202,6 +1247,14 @@ export class ExpressionParser{
         this.variables[name]![0]!.value = value;
     }
 
+    getVariable(name: string) {
+        return this.variables[name]?.at(0)?.value;
+    }
+
+    deleteVariable(name: string) {
+        delete this.variables[name];
+    }
+
 
     getExpressionType(tokens: Token[] = this.outputQueue): ExpressionType {
         if (this.rules.isCustomFunction/* && left.length == 1 && left[0].type == TokenType.FUNCTION*/) {
@@ -1235,8 +1288,19 @@ export class ExpressionParser{
     }
 
     getSupportedFunctions() {
+        //except: sqrt sum prod coprod int
         let fun = '';
         for (const fn in functions) {
+            if (/sqrt|sum|prod|coprod|int/.test(fn)) continue;
+            fun += fn + ' ';
+        }
+        return fun.trimEnd();
+    }
+
+    getAutoParenthesisedFunctions() {
+        let fun = '';
+        for (const fn in functions) {
+            if (functions[fn]!.argc < 2) continue;
             fun += fn + ' ';
         }
         return fun.trimEnd();

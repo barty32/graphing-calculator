@@ -6,7 +6,7 @@
     <?php includeHead(1, 1, 1, 1) ?>
     <link rel="stylesheet" href="mathquill/mathquill.css" />
     <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script> -->
-    <script src="mathquill/mathquill.js"></script>
+    <script src="mathquill/mathquill.min.js"></script>
     <!-- <script src="https://unpkg.com/mathlive?module" type="module" defer></script> -->
     <!-- <script src="./mathlive/dist/mathlive.min.mjs" type="text/javascript-module" defer></script> -->
     <title><?php echo $lang['graphing.title'] ?> | barty12's webpage</title>

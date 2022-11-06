@@ -1,11 +1,11 @@
 import { Graph } from './graph.js';
-import { ExpressionParser, ExpressionType, ParserFatalError, Severity, Variables, Functions, TokenType } from './parser.js';
+import { ExpressionParser, ExpressionType, ParserFatalError, Severity, Variables, Functions, TokenType, LatexParseError } from './parser.js';
 import { AudioManager, AudioSpec, AudioFn } from './audio.js';
 import DataConverter from './converter.js';
 import { IWorkerCalculateData, IWorkerUpdateFunctions, IWorkerReceiveData } from './worker.js';
 //import { MathfieldElement } from '../mathlive/dist/mathlive';
 //import type { MathfieldElement } from 'mathlive/dist/types/mathlive/mathlive';
-import { MathFieldMethods, MQ } from '../mathquill/mathquill.mod.js';
+import { MQ } from '../mathquill/mathquill.mod.js';
 
 enum LineType{
     expression,
@@ -85,7 +85,7 @@ class Line{
     audioFn: AudioFn | undefined;
     isSimpleVariable = false;
     variableName = '';
-    editHandler: ((mathField: MathFieldMethods) => void ) = () => {};
+    editHandler: ((mathField: MathQuill.v3.EditableMathQuill) => void ) = () => {};
 
     DOM = {
         subContainer: undefined as (HTMLDivElement | undefined),
@@ -96,7 +96,7 @@ class Line{
         sliderSetup: undefined as (HTMLDivElement | undefined),
         slider: undefined as (HTMLInputElement | undefined),
         clipping: undefined as (HTMLDivElement | undefined),
-        fnInput: undefined as (MathFieldMethods | undefined)
+        fnInput: undefined as (MathQuill.v3.EditableMathQuill | undefined)
     }
 
     constructor(type: LineType) {
@@ -538,17 +538,18 @@ class Line{
         const errTooltip = document.createElement('span');
         errTooltip.classList.add('e-tooltip', 'rounded');
 
-        this.editHandler = (f: MathFieldMethods) => {
+        this.editHandler = (f: MathQuill.v3.EditableMathQuill) => {
             let error = false;
+            errTooltip.innerHTML = '';
             try {
                 if (this.type == LineType.variable)
                     delete this.parser.variables[this.variableName];
                 if (this.type == LineType.function)
                     delete this.parser.functions[this.variableName];
                 
-                //console.log('Latex: ' + f.latex());
+                console.log('Latex: ' + f.latex());
                 const expression = this.parser.latexToString(f.latex());
-                //console.log('Expr: ' + expression);
+                console.log('Expr: ' + expression);
                 this.parser.tokenize(expression).checkSyntax().parse();
                 delete this.parser.variables['x'];
                 delete this.parser.variables['y'];
@@ -594,14 +595,16 @@ class Line{
                 this.parser.evaluate();
             }
             catch (e) {
-                if (!(e instanceof ParserFatalError)) {
+                if (e instanceof LatexParseError) {
+                    errTooltip.innerHTML += e.message + '<br>';
+                }
+                else if (!(e instanceof ParserFatalError)) {
                     throw e;
                 }
                 error = true;
                 graph.draw(true);
             }
 
-            errTooltip.innerHTML = '';
             for (const err of this.parser.problems) {
                 if (err.severity >= Severity.ERROR) {
                     errTooltip.innerHTML += err.desc + '<br>';
@@ -644,10 +647,11 @@ class Line{
             // },
             autoCommands: 'pi tau infinity infty sqrt sum prod coprod int',
             autoOperatorNames: this.parser.getSupportedFunctions(),
+            autoParenthesizedFunctions: this.parser.getAutoParenthesisedFunctions(),
             handlers: {
                 edit: this.editHandler
             }
-        });
+        } as MathQuill.v3.Config);
         fnInput.appendChild(errorImg);
         fnInput.appendChild(errTooltip);
         parent.appendChild(fnInput);
@@ -813,7 +817,7 @@ class Line{
 }
 
 const audioMgr = new AudioManager();
-var lines: { [index: number]: Line | undefined } = {};
+var lines: { [index: number]: Line } = {};
 var variables: Variables = {};
 var functions: Functions = {};
 
@@ -825,8 +829,10 @@ graph.draw();
 
 graph.onRequestData = () => {
     for (const line in lines) {
+        lines[line]!.parser.rules.resulution = 1 / graph.xScale;
+        lines[line]!.updateWorkerRules();
         //console.log('requesting data from ' + line);
-        lines[line]?.calculate();
+        lines[line]!.calculate();
     }
 };
 

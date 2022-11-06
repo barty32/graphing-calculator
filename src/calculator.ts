@@ -548,9 +548,9 @@ class Line{
                 if (this.type == LineType.function)
                     delete this.parser.functions[this.variableName];
                 
-                console.log('Latex: ' + f.latex());
+                //console.log('Latex: ' + f.latex());
                 const expression = this.parser.latexToString(f.latex());
-                console.log('Expr: ' + expression);
+                //console.log('Expr: ' + expression);
                 this.parser.tokenize(expression).checkSyntax().parse();
                 delete this.parser.variables['x'];
                 delete this.parser.variables['y'];

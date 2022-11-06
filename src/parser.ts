@@ -845,8 +845,8 @@ export class ExpressionParser{
                     }
                     else if (operators[token.name]?.precedence == operators['=']!.precedence) {
                         //equality operators must be kept in place
-                        destination.push(token);
                         popStack();
+                        destination.push(token);
                         break;
                     }
                     let top = operatorStack.at(-1);

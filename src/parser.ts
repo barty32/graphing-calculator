@@ -266,6 +266,9 @@ export class ExpressionParser{
         //placeholders
         input = input.replaceAll(/\\placeholder({})?/g, '?');
 
+        //space
+        input = input.replaceAll(/\\ /g, ' ');
+
         let res = null;
         let iter = 0;
         //these commands can be self-contained

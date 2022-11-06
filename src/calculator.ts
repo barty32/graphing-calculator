@@ -503,6 +503,7 @@ class Line{
             //graph.attachArray(this.id, await DataConverter.convert(fileInput.files[0]));
             DataConverter.convert(fileInput.files[0]!).then((arr) => {
                 graph.attachData(this.id, arr);
+                graph.setInspectMode(this.id, 'x');
             });
             fileInput.files[0]!.arrayBuffer().then((data) => {
                 if (this.playing) this.toggleAudio();
@@ -557,15 +558,18 @@ class Line{
                     case ExpressionType.FUNCTION:
                         if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(x):';
                         this.parser.setVariable('x', 0);
+                        graph.setInspectMode(this.id, 'x');
                         break;
                     case ExpressionType.YFUNCTION:
                         if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(y):';
                         this.parser.setVariable('y', 0);
+                        graph.setInspectMode(this.id, 'y');
                         break;
                     case ExpressionType.EQUATION:
                         if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(x,y):';
                         this.parser.setVariable('x', 0);
                         this.parser.setVariable('y', 0);
+                        graph.setInspectMode(this.id, 'point');
                         break;
                 }
                 if (this.type == LineType.variable) {

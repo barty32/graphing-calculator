@@ -911,7 +911,7 @@ export class ExpressionParser{
                 if (eq > -1) {
                     const left = tokens.slice(0, eq);
                     const right = tokens.slice(eq + 1);
-                    return Math.abs(this.evaluateInternal(left) - this.evaluateInternal(right)) <= 1/100 ? 1 : 0;//1/this.variables['res']
+                    return Math.abs(this.evaluateInternal(left) - this.evaluateInternal(right)) <= this.rules.resulution*2 ? 1 : 0;//1/this.variables['res']
                 }
                 this.problems.push(problem(0, 0, Severity.ERROR, `Internal error: expression is equality and is missing '='`));
                 throw new ParserFatalError('Evaluate error');

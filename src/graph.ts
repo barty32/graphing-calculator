@@ -12,6 +12,7 @@ interface LineParams {
     //xRes: number;  //horizontal line resolution
     //yRes: number;  //vertical line resolution (not implemented)
     points: Point[];
+    inspectMode: 'x' | 'y' | 'point';
     //type: ExpressionType;
     //worker?: Worker;
     //variables?: { [key: string]: number };
@@ -118,7 +119,7 @@ export class Graph {
      */
     addLine(name: string, color: string = 'red') {
         const lineID = ++this.idCounter;
-        this.lines[lineID] = { color, id: lineID, name, on: true, points: [] };
+        this.lines[lineID] = { color, id: lineID, name, on: true, points: [], inspectMode: 'point' };
         return lineID;
     }
 
@@ -135,6 +136,10 @@ export class Graph {
     attachData(id: number, array: Point[]) {
         this.getLine(id).points = array;
         this.draw();
+    }
+
+    setInspectMode(id: number, mode: 'x' | 'y' | 'point') {
+        this.getLine(id).inspectMode = mode;
     }
 
     private getTouchDistance(x1: number, y1: number, x2: number, y2: number) {
@@ -178,11 +183,21 @@ export class Graph {
 
     private findClosestPoint(x: number, y: number, line: LineParams): Point | undefined {
         x = (x + this.xOffset) / this.xScale;
-        //y = (-y + this.yOffset) / this.yScale;
+        y = (-y + this.yOffset) / this.yScale;
         let leastDist = Infinity;
         let leastPt = undefined;
         for (const pt of line.points) {
-            const dist = Math.abs((pt.x ?? Infinity) - x);//Math.sqrt(Math.abs(pt.x - x) ** 2 + Math.abs(pt.y - y) ** 2);
+            let dist: number;
+            switch (line.inspectMode) {
+                case 'x':
+                    dist = Math.abs((pt.x ?? Infinity) - x);
+                    break;
+                case 'y':
+                    dist = Math.abs((pt.y ?? Infinity) - y);
+                    break;
+                case 'point':
+                    dist = Math.sqrt(Math.abs((pt.x ?? Infinity) - x) ** 2 + Math.abs((pt.y ?? Infinity) - y) ** 2)
+            }
             if (dist < leastDist) {
                 leastDist = dist;
                 leastPt = pt;
@@ -484,10 +499,10 @@ export class Graph {
                 const x = point.x * this.xScale - this.xOffset;
                 const y = -point.y * this.yScale + this.yOffset;
 
-                if (x < -1 || x > this.width + 1 /*|| y < 0 || y > this.height*/) {
+                if (x < -2 || x > this.width + 2 /*|| y < 0 || y > this.height*/) {
                     continue;
                 }
-                if (Math.abs(prevX - x) < 1 /*|| Math.abs(prevY - y) < 1*/) {
+                if (!point.selected && ((line.inspectMode == 'x' && Math.abs(prevX - x) < 1) || (line.inspectMode == 'y' && Math.abs(prevY - y) < 1))) {
                     continue;
                 }
 
@@ -510,7 +525,13 @@ export class Graph {
 
                 if (point.selected) {
                     this.ctx.fillStyle = 'white';
-                    this.ctx.fillRect(x, 0, 1, this.height);
+                    if (line.inspectMode == 'x') {
+                        this.ctx.fillRect(x, 0, 1, this.height);
+                    }
+                    else if (line.inspectMode == 'y') {
+                        this.ctx.fillRect(0, y, this.width, 1);
+                    }
+                    if(!point.connect) this.ctx.moveTo(x, y);
                     this.ctx.arc(x, y, 2, 0, 2 * Math.PI);
                     this.ctx.moveTo(x, y);
                     drawLabel = {x: point.x, y: point.y, xpos: x, ypos: y};

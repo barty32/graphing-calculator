@@ -6,7 +6,16 @@
  - add degree operator
  - copy handler to input
  - fix empty parentheses
- - fix bug with start and end input s > e
+ - fix settings
+ - create custom keyboard
+ - fix discontinuity (that sucks)
+ - fix equations (solve them)
+ - add polar functions
+ - add inequalities
+ - add random, lcm, gcd, nCr and nPr functions
+ - add audio normalization
+ - add audio current view
+ - add save to local storage / export
 
  CHANGELOG:
 
@@ -21,6 +30,22 @@
  - added variable sliders
  - fixed degrees
  - added export audio to WAV
+ - added warning about audio clipping
+ - fixed bug with infinite loop when removed line (and calculation was active)
+ - fixed bugs with some margins
+ - returned green borders on mobile devices
+ - switched back to MathQuill (smaller, simpler)
+ - fix error icon position
+ - changed error system (removed warnings)
+ - changed audio generation (gets generated on play, not on expression change)
+ - fixed bugs with exceptions in workers
+ - fixed bug with start and end input s > e
+ - added syntax checks for functions and variables
+ - fixed bugs with variables (removed, redefinition)
+ - added full support for integrals and derivatives
+ - added auto parenthesisation of functions with more than 1 argument
+ - fixed graph vertical and xy inspecting
+ - fixed equalities and equality sign bug
  
  Done (v1.5)
  - fixed bug with touch controls on Firefox

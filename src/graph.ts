@@ -531,7 +531,10 @@ export class Graph {
                     else if (line.inspectMode == 'y') {
                         this.ctx.fillRect(0, y, this.width, 1);
                     }
-                    if(!point.connect) this.ctx.moveTo(x, y);
+                    if (point.connect)
+                        this.ctx.lineTo(x, y);
+                    else 
+                        this.ctx.moveTo(x, y);
                     this.ctx.arc(x, y, 2, 0, 2 * Math.PI);
                     this.ctx.moveTo(x, y);
                     drawLabel = {x: point.x, y: point.y, xpos: x, ypos: y};

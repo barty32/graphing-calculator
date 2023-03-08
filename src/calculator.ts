@@ -151,7 +151,8 @@ class Line{
             this.updateWorkerFunctions();
         }
         if (this.type == LineType.audio) {
-            this.audioDataChanged();
+			this.audioDataChanged();
+			graph.setInspectMode(this.id, "x");
         }
     }
 
@@ -794,7 +795,8 @@ class Line{
                     xOffset: graph.xOffset,
                     yOffset: graph.yOffset,
                     xScale: graph.xScale,
-                    yScale: graph.yScale
+					yScale: graph.yScale,
+					detectDiscontinuity: (this.type == LineType.audio || this.type == LineType.rawData) ? false : true
                 } as IWorkerCalculateData
             });
         }

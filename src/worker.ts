@@ -22,7 +22,8 @@ export interface IWorkerCalculateData{
     xOffset: number;
     yOffset: number;
     xScale: number;
-    yScale: number;
+	yScale: number;
+	detectDiscontinuity: boolean;
 }
 
 export interface IWorkerUpdateFunctions{
@@ -126,7 +127,7 @@ self.onmessage = (e) => {
                                 let y2 = parser.evaluate(line.expression);
                                 const dy2 = (y2 - y2prev) / (step / 10);
 
-                                if (Math.abs(dy2) > 1000) {
+                                if (line.detectDiscontinuity && Math.abs(dy2) > 1000) {
                                     //points.push({ x: j, y: 1000000, connect: true, selected: false, debug: 0 });
                                     //points.push({ x: j, y: -1000000, connect: false, selected: false, debug: 0 });
                                     connect = false;

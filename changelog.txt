@@ -30,6 +30,9 @@ priority:
  - removed jQuery
  - fixed bug: changing audio line properties has no effect
  - fixed error icon color
+ - fixed audio line inspect mode
+ - discontinuity is disabled for audio and raw data lines
+ - fixed loop mode on file playback
 
  Done (v1.6)
  - added custom variables

@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <?php includeHead(1, 1, 1, 1) ?>
+    <?php includeHead() ?>
     <link rel="stylesheet" href="mathquill/mathquill.css" />
     <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script> -->
     <script src="mathquill/mathquill.min.js"></script>
@@ -143,17 +143,6 @@
             display: flex;
             align-items: flex-end;
         }
-
-        /* .input-group .w-tooltip::after {
-            content: "";
-            position: absolute;
-            bottom: 100%;
-            right: 10px;
-            margin-left: -5px;
-            border-width: 5px;
-            border-style: solid;
-            border-color: transparent transparent yellow transparent;
-        } */
 
         .input-group .warn-img:hover+.w-tooltip {
             visibility: visible;
@@ -486,9 +475,9 @@
 HTML); ?>
 
         <?php bootstrapModal('aboutModal', $lang['aboutmodal.title'], <<<HTML
-		<h5 style="font-weight:bold;">{$lang['graphing.title']}, <span style="font-size:1rem">{$lang['aboutmodal.version']} 1.6</span></h5> 
+		<h5 style="font-weight:bold;">{$lang['graphing.title']}, <span style="font-size:1rem">{$lang['aboutmodal.version']} 1.6.1</span></h5> 
 		<span>{$lang['aboutmodal.created']}: {$lang['month.june']} 2022</span><br />
-		<span>{$lang['aboutmodal.updated']}: {$lang['month.october']} 2022</span>
+		<span>{$lang['aboutmodal.updated']}: {$lang['month.november']} 2022</span>
 		<p>© 2022 by barty12</p>
 HTML); ?>
 

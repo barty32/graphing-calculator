@@ -730,7 +730,6 @@ class Line{
                         [{ type: TokenType.NUMBER, value: this.audioData.bias, name: '', pos: 0 }]
                     ]
                 }];
-                this.calculate();
                 break;
             case 'square':
                 this.parser.outputQueue = [{
@@ -744,7 +743,6 @@ class Line{
                         [{ type: TokenType.NUMBER, value: this.audioData.bias, name: '', pos: 0 }]
                     ]
                 }];
-                this.calculate();
                 break;
             case 'triangle':
                 this.parser.outputQueue = [{
@@ -758,7 +756,6 @@ class Line{
                         [{ type: TokenType.NUMBER, value: this.audioData.bias, name: '', pos: 0 }]
                     ]
                 }];
-                this.calculate();
                 break;
             case 'custom':
                 if (this.playing) this.toggleAudio();
@@ -775,6 +772,11 @@ class Line{
                 break;
             default:
                 //graph.attachFn(this.id, () => undefined, ExpressionType.FUNCTION);
+        }
+        if (this.audioData.waveType != 'custom') {
+            this.calculate();
+            this.generated = false;
+            this.generateAudio();
         }
         if (this.playing) audioMgr.startNode(this.id);
         graph.draw();

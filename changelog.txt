@@ -1,13 +1,18 @@
  TODO list:
 
- - make frequency slider logarithmic
- - fix dpi rendering issues
- - add how to use
- - add degree operator
- - copy handler to input
+
+priority:
+ - make button toolbar sticky
+ - create custom keyboard
  - fix empty parentheses
  - fix settings
- - create custom keyboard
+ - add how to use
+ - add save to local storage / export
+
+ - make frequency slider logarithmic
+ - fix dpi rendering issues
+ - add degree operator
+ - copy handler to input
  - fix discontinuity (that sucks)
  - fix equations (solve them)
  - add polar functions
@@ -15,9 +20,16 @@
  - add random, lcm, gcd, nCr and nPr functions
  - add audio normalization
  - add audio current view
- - add save to local storage / export
+
+
 
  CHANGELOG:
+
+ Done (v1.6.1)
+ - fixed bug with capital letters in custom functions
+ - removed jQuery
+ - fixed bug: changing audio line properties has no effect
+ - fixed error icon color
 
  Done (v1.6)
  - added custom variables

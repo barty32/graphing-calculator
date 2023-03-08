@@ -347,7 +347,7 @@ export class ExpressionParser{
 
         //check custom functions and variables here
         if (this.rules.isCustomFunction) {
-            if (!/^[a-z]+\(([a-z],)*[a-z]?\)=.+/.test(expression)) {
+            if (!/^[a-z]+\(([a-z],)*[a-z]?\)=.+/i.test(expression)) {
                 this.problems.push(problem(0, 0, Severity.ERROR, `Invalid function declaration. Use something like 'fn(a,b) = sin(a)+b'.`));
             }
         }

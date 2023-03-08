@@ -155,12 +155,12 @@ export class AudioManager {
         node.bufferNode = new AudioBufferSourceNode(this.audioCtx, { buffer: node.audioBuffer, loop: node.params.loop });
         if (node.params.waveType == 'file') {
             node.bufferNode.loopStart = node.params.start;
-            node.bufferNode.loopEnd = node.params.end;
+			node.bufferNode.loopEnd = node.params.end;
         }
         node.bufferNode.connect(this.audioCtx.destination);
-        node.bufferNode.onended = onended ?? null;
+		node.bufferNode.onended = onended ?? null;
         if (node.params.waveType == 'file') {
-            node.bufferNode.start(undefined, node.params.start, node.params.end - node.params.start);
+            node.bufferNode.start(0, node.params.start, node.params.loop ? undefined : node.params.end - node.params.start);
         }
         else {
             node.bufferNode.start();

@@ -29,6 +29,10 @@
 			flex-direction: column;
 		}
 
+		.wave-box:first-child {
+			margin-top: 0;
+		}
+
 		.wave-box {
 			display: flex;
 			flex-direction: column;
@@ -189,6 +193,10 @@
 			flex-shrink: 0;
 		}
 
+		#wave-panel{
+			padding: 0 10px 10px;
+		}
+
 		#show-btn {
 			position: fixed;
 			right: 0;
@@ -202,6 +210,14 @@
 
 		#show-btn:hover {
 			filter: brightness(70%);
+		}
+
+		#panel-control-buttons{
+			position: sticky;
+			top: 0px;
+			background: #333;
+			z-index: 10;
+			padding: 10px 0;
 		}
 
 		#panel-control-buttons>a {

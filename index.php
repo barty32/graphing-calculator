@@ -238,6 +238,153 @@
 			filter: brightness(70%);
 		}
 
+		#keyboard {
+			bottom: 0;
+			left: 0;
+			width: 100%;
+			/* height: 250px; */
+			max-height: 100%;
+			z-index: 1200;
+			background-color: #111;
+			user-select: none;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+		}
+
+		#keyboard:not(.hidden) {
+			position: fixed;
+		}
+
+		.keyboard-switcher {
+			align-self: flex-start;
+			display: flex;
+		}
+
+		.keyboard-switcher>span {
+			padding: 5px 10px;
+			margin: 3px 1px;
+			color: white;
+			cursor: pointer;
+		}
+
+		.keyboard-switcher>span:not(.active):hover {
+			color: var(--bs-primary);
+			background: #333;
+			border-radius: 5px;
+		}
+
+		.keyboard-switcher>span.active {
+			color: var(--bs-primary);
+			border-bottom: 2px solid var(--bs-primary)
+		}
+
+		.keyboard-button {
+			background: #222;
+			color: white;
+			font-size: 25px;
+			border-radius: 10px;
+			cursor: pointer;
+			/* touch-action: none; */
+			display: flex;
+			justify-content: center;
+			align-items: center;
+		}
+
+		.symbol {
+			font-family: Symbola, 'Times New Roman', serif;
+		}
+
+		.char {
+			font-family: 'Times New Roman', Symbola, serif;
+		}
+
+		.italic {
+			font-style: italic;
+		}
+
+		.keyboard-button svg {
+			width: 40px;
+			height: 40px;
+		}
+
+		.keyboard-button:hover {
+			background-color: #333;
+		}
+
+		.keyboard-button:active {
+			background-color: #111;
+		}
+
+		.keyboard-container {
+			/* background: #00ff00bb; */
+			width: 100%;
+			height: 100%;
+			max-width: 800px;
+			padding: 5px;
+		}
+
+		.keyboard-container>div {
+			display: grid;
+			gap: 5px;
+			/* height: 200px; */
+			width: 100%;
+			height: 100%;
+		}
+
+		#keyboard-numbers {
+			grid-template-columns: 4fr 4fr 1fr repeat(4, 4fr) 1fr repeat(3, 4fr);
+			grid-template-rows: repeat(4, 1fr);
+		}
+
+		#keyboard-functions {
+			grid-template-columns: 2fr 2fr 1fr repeat(3, 4fr 4fr 1fr);
+			grid-template-rows: repeat(4, 1fr);
+			overflow-x: auto;
+		}
+
+		#keyboard-letters {
+			grid-template-columns: repeat(20, 1fr);
+			grid-template-rows: repeat(5, 1fr);
+		}
+
+		.kb-control-button {
+			position: absolute;
+			padding: 2px 5px;
+			margin: 5px;
+			color: white;
+			background: #222;
+			cursor: pointer;
+			border-radius: 5px;
+			display: flex;
+			align-items: center;
+		}
+
+		#keyboard-open {
+			position: fixed;
+			right: 0;
+			bottom: 0;
+			z-index: 4;
+			border: 1px solid #333;
+		}
+
+		#keyboard-close {
+			right: 0;
+			top: 0;
+		}
+
+		#keyboard.hidden #keyboard-close {
+			display: none;
+		}
+
+		.kb-control-button svg {
+			margin: 2px;
+		}
+
+		.kb-control-button:hover {
+			background: #444;
+		}
+
 		#backbtn {
 			position: fixed;
 			margin: 20px;
@@ -444,10 +591,22 @@
                             <input type="range" min="1" max="22000" step="1" value="440" class="form-range input-slider" id="frequency-slider">
                         </div> -->
 			</div>
+			<span id="keyboard-open" class="kb-control-button" tabindex="0">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 576 512" fill="currentColor">
+					<path d="M64 112c-8.8 0-16 7.2-16 16V384c0 8.8 7.2 16 16 16H512c8.8 0 16-7.2 16-16V128c0-8.8-7.2-16-16-16H64zM0 128C0 92.7 28.7 64 64 64H512c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128zM176 320H400c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H176c-8.8 0-16-7.2-16-16V336c0-8.8 7.2-16 16-16zm-72-72c0-8.8 7.2-16 16-16h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H120c-8.8 0-16-7.2-16-16V248zm16-96h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H120c-8.8 0-16-7.2-16-16V168c0-8.8 7.2-16 16-16zm64 96c0-8.8 7.2-16 16-16h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H200c-8.8 0-16-7.2-16-16V248zm16-96h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H200c-8.8 0-16-7.2-16-16V168c0-8.8 7.2-16 16-16zm64 96c0-8.8 7.2-16 16-16h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H280c-8.8 0-16-7.2-16-16V248zm16-96h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H280c-8.8 0-16-7.2-16-16V168c0-8.8 7.2-16 16-16zm64 96c0-8.8 7.2-16 16-16h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H360c-8.8 0-16-7.2-16-16V248zm16-96h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H360c-8.8 0-16-7.2-16-16V168c0-8.8 7.2-16 16-16zm64 96c0-8.8 7.2-16 16-16h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H440c-8.8 0-16-7.2-16-16V248zm16-96h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H440c-8.8 0-16-7.2-16-16V168c0-8.8 7.2-16 16-16z" />
+				</svg>
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 320 512" fill="currentColor">
+					<path d="M182.6 137.4c-12.5-12.5-32.8-12.5-45.3 0l-128 128c-9.2 9.2-11.9 22.9-6.9 34.9s16.6 19.8 29.6 19.8H288c12.9 0 24.6-7.8 29.6-19.8s2.2-25.7-6.9-34.9l-128-128z" />
+				</svg>
+			</span>
 		</div>
+	</div>
+
+	<div id="keyboard" class="hidden"></div>
 
 
-		<?php bootstrapModal('optionsModal', $lang('graphing.options.title'), <<<HTML
+
+	<?php bootstrapModal('optionsModal', $lang('graphing.options.title'), <<<HTML
         <div class="form-check form-switch">
 		    <input class="form-check-input" type="checkbox" role="switch" id="options-grid" checked>
             <label class="form-check-label" for="options-grid">{$lang('graphing.options.grid')}</label>
@@ -475,20 +634,20 @@
 
 HTML); ?>
 
-		<?php bootstrapModal('aboutModal', $lang('aboutmodal.title'), <<<HTML
+	<?php bootstrapModal('aboutModal', $lang('aboutmodal.title'), <<<HTML
 		<h5 style="font-weight:bold;">{$lang('graphing.title')}, <span style="font-size:1rem">{$lang('aboutmodal.version')} 1.6.1</span></h5> 
 		<span>{$lang('aboutmodal.created')}: {$lang('month.june')} 2022</span><br />
 		<span>{$lang('aboutmodal.updated')}: {$lang('month.november')} 2022</span>
 		<p>© 2022 by barty12</p>
 HTML); ?>
 
-		<!-- <script src="https://unpkg.com/@free-side/audioworklet-polyfill/dist/audioworklet-polyfill.js"></script> -->
-		<script src="js/audioworklet-polyfill.min.js"></script>
-		<script src="js/module-workers-polyfill.min.js"></script>
-		<script src="js/calculator.js" type="module"></script>
-		<!-- <script src="graph.js" type="module"></script> -->
+	<!-- <script src="https://unpkg.com/@free-side/audioworklet-polyfill/dist/audioworklet-polyfill.js"></script> -->
+	<script src="js/audioworklet-polyfill.min.js"></script>
+	<script src="js/module-workers-polyfill.min.js"></script>
+	<script src="js/calculator.js" type="module"></script>
+	<!-- <script src="graph.js" type="module"></script> -->
 
-		<?php includeAd(); ?>
+	<?php includeAd(); ?>
 </body>
 
 </html>

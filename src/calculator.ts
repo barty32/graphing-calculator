@@ -3,8 +3,7 @@ import { ExpressionParser, ExpressionType, ParserFatalError, Severity, Variables
 import { AudioManager, AudioSpec, AudioFn } from './audio.js';
 import DataConverter from './converter.js';
 import { IWorkerCalculateData, IWorkerUpdateFunctions, IWorkerReceiveData } from './worker.js';
-//import { MathfieldElement } from '../mathlive/dist/mathlive';
-//import type { MathfieldElement } from 'mathlive/dist/types/mathlive/mathlive';
+import { Keyboard } from './keyboard.js';
 import { MQ } from '../mathquill/mathquill.mod.js';
 
 enum LineType{
@@ -532,7 +531,7 @@ class Line{
         //$$ test\left(a,b\right)=\operatorname{sin}\left(a\right)+b $$
         const fnInput = document.createElement('span');
         fnInput.classList.add('form-control', 'd-flex');
-        fnInput.id = `expr-input-${this.id}`;
+		fnInput.id = `expr-input-${this.id}`;
 
         const errorImg = document.createElement('img');
         errorImg.src = '/assets/images/warning.svg';
@@ -656,7 +655,24 @@ class Line{
             handlers: {
                 edit: this.editHandler
             }
-        } as MathQuill.v3.Config);
+		} as MathQuill.v3.Config);
+		
+		const textarea = fnInput.querySelector('textarea');
+		if (textarea) {
+			textarea.inputMode = 'none';
+			textarea.addEventListener('focus', () => {
+				if (!keyboardClosed && window.matchMedia("(max-width: 450px)")) {
+					keyboard.show();
+				}
+			});
+
+			textarea.addEventListener('blur', () => {
+				keyboard.hide();
+			});
+
+			textarea.setAttribute('data-id', this.id.toString());
+		}
+		
         fnInput.appendChild(errorImg);
         fnInput.appendChild(errTooltip);
         parent.appendChild(fnInput);
@@ -828,12 +844,24 @@ const audioMgr = new AudioManager();
 var lines: { [index: number]: Line } = {};
 var variables: Variables = {};
 var functions: Functions = {};
+var keyboard: Keyboard;
+var keyboardClosed = false;
 
 var idCounter = -1;
 var currentEditedLine: Line;
 
 const graph = new Graph(document.querySelector('#graph') as HTMLCanvasElement);
 graph.draw();
+
+document.querySelector('#graph-zoom-in')?.addEventListener('click', () => {
+	graph.zoomIn();
+});
+document.querySelector('#graph-zoom-out')?.addEventListener('click', () => {
+	graph.zoomOut();
+});
+document.querySelector('#graph-zoom-home')?.addEventListener('click', () => {
+	graph.resetZoom();
+});
 
 graph.onRequestData = () => {
     for (const line in lines) {
@@ -871,10 +899,67 @@ document.addEventListener("DOMContentLoaded", function () {
 
     lines[++idCounter] = new Line(LineType.expression);
     graph.fixSize();
-    graph.resetZoom();
+	graph.resetZoom();
+
+	keyboard = new Keyboard(document.querySelector('#keyboard')!, (cmd) => {
+		const activeElement = document.activeElement as HTMLElement;
+		if (!activeElement) {
+			return;
+		}
+		if (!activeElement.hasAttribute('data-id')) {
+			return;
+		}
+		const id = parseInt(activeElement.getAttribute('data-id')!);
+		if (!lines[id]) {
+			return;
+		}
+		const fnInput = lines[id]!.DOM.fnInput;
+		if (!fnInput) return;
+
+		if (cmd.includes('\\')) {
+			for (const letter of cmd) {
+				if (letter == '\\') {
+					switch (cmd.substring(cmd.search(/\\/) + 1)) {
+						case 'backspace':
+							fnInput.keystroke('Backspace');
+							break;
+						case 'moveright':
+							fnInput.keystroke('Right');
+							break;
+						case 'moveleft':
+							fnInput.keystroke('Left');
+							break;
+						case 'start':
+							fnInput.keystroke('Home');
+							break;
+						case 'end':
+							fnInput.keystroke('End');
+							break;
+						case 'deleteall':
+							fnInput.latex('');
+							break;
+						case 'enter':
+							fnInput.keystroke('Enter');
+							break;
+					}
+					return;
+				}
+				fnInput.typedText(letter);
+			}
+			return;
+		}
+		fnInput.typedText(cmd);
+	});
+
+	keyboard.DOM.closeBtn.addEventListener('click', (e) => {
+		keyboardClosed = true;
+	});
+
+	document.querySelector('#keyboard-open')?.addEventListener('click', () => {
+		keyboardClosed = false;
+		keyboard.show();
+	});
 });
-
-
 
 document.querySelector('#audio-back')?.addEventListener('click', () => {
     DOM.wavePanel.style.display = 'block';

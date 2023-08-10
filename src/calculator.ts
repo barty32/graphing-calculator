@@ -2,7 +2,7 @@ import { Graph } from './graph.js';
 import { ExpressionParser, ExpressionType, ParserFatalError, Severity, Variables, Functions, TokenType, LatexParseError } from './parser.js';
 import { AudioManager, AudioSpec, AudioFn } from './audio.js';
 import DataConverter from './converter.js';
-import { IWorkerCalculateData, IWorkerUpdateFunctions, IWorkerReceiveData } from './worker.js';
+import { IWorkerCalculateData, IWorkerReceiveData, calculateLine } from './worker.js';
 import { Keyboard } from './keyboard.js';
 import { MQ } from '../mathquill/mathquill.mod.js';
 
@@ -14,15 +14,47 @@ enum LineType{
     function
 }
 
+interface SaveData{
+	app: 'Graphing calculator (Graph.js)',
+	version: '1.7',
+	name: string,
+	dateSaved: string,
+	keyboardClosed: boolean,
+	xOffset: number;
+	yOffset: number;
+	xScale: number;
+	yScale: number;
+	options: {
+		gridAxis: boolean,
+		minorGrid: boolean,
+		axisNumbers: boolean,
+		connectPoints: boolean,
+		degrees: boolean
+	},
+	lines: {
+		name: string,
+		color: string,
+		type: LineType,
+		audioData: AudioSpec,
+		visible: boolean,
+		expression?: string,
+		variableSlider?: {
+			value: number,
+			min: number,
+			max: number,
+			step: number
+		}
+	}[]
+}
+
 //const play = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-play"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
 //const pause = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-pause"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
-const play = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 384 512" fill="white"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>';
-const pause = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 384 512" fill="white"><path d="M0 128C0 92.7 28.7 64 64 64H320c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128z"/></svg>';
-const eyeON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
-const eyeOFF = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye-off"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
-const speaker = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-volume-2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
-const brush = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="24" height="24" style="vertical-align:top"><path d="M224 263.3C224.2 233.3 238.4 205.2 262.4 187.2L499.1 9.605C517.7-4.353 543.6-2.965 560.7 12.9C577.7 28.76 580.8 54.54 568.2 74.07L406.5 324.1C391.3 347.7 366.6 363.2 339.3 367.1L224 263.3zM320 400C320 461.9 269.9 512 208 512H64C46.33 512 32 497.7 32 480C32 462.3 46.33 448 64 448H68.81C86.44 448 98.4 429.1 96.59 411.6C96.2 407.8 96 403.9 96 400C96 339.6 143.9 290.3 203.7 288.1L319.8 392.5C319.9 394.1 320 397.5 320 400V400z"/></svg>';
-//const palette = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="24" height="24" style="vertical-align:top"><!--! Font Awesome Pro 6.1.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M512 255.1C512 256.9 511.1 257.8 511.1 258.7C511.6 295.2 478.4 319.1 441.9 319.1H344C317.5 319.1 296 341.5 296 368C296 371.4 296.4 374.7 297 377.9C299.2 388.1 303.5 397.1 307.9 407.8C313.9 421.6 320 435.3 320 449.8C320 481.7 298.4 510.5 266.6 511.8C263.1 511.9 259.5 512 256 512C114.6 512 0 397.4 0 256C0 114.6 114.6 0 256 0C397.4 0 512 114.6 512 256V255.1zM96 255.1C78.33 255.1 64 270.3 64 287.1C64 305.7 78.33 319.1 96 319.1C113.7 319.1 128 305.7 128 287.1C128 270.3 113.7 255.1 96 255.1zM128 191.1C145.7 191.1 160 177.7 160 159.1C160 142.3 145.7 127.1 128 127.1C110.3 127.1 96 142.3 96 159.1C96 177.7 110.3 191.1 128 191.1zM256 63.1C238.3 63.1 224 78.33 224 95.1C224 113.7 238.3 127.1 256 127.1C273.7 127.1 288 113.7 288 95.1C288 78.33 273.7 63.1 256 63.1zM384 191.1C401.7 191.1 416 177.7 416 159.1C416 142.3 401.7 127.1 384 127.1C366.3 127.1 352 142.3 352 159.1C352 177.7 366.3 191.1 384 191.1z"/></svg>'
+const play =     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 384 512" fill="white"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>';
+const pause =    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 384 512" fill="white"><path d="M0 128C0 92.7 28.7 64 64 64H320c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128z"/></svg>';
+const eyeON =    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+const eyeOFF =   '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye-off"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+const speaker =  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-volume-2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+const brush =    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 576 512" style="vertical-align:top"><path d="M224 263.3C224.2 233.3 238.4 205.2 262.4 187.2L499.1 9.605C517.7-4.353 543.6-2.965 560.7 12.9C577.7 28.76 580.8 54.54 568.2 74.07L406.5 324.1C391.3 347.7 366.6 363.2 339.3 367.1L224 263.3zM320 400C320 461.9 269.9 512 208 512H64C46.33 512 32 497.7 32 480C32 462.3 46.33 448 64 448H68.81C86.44 448 98.4 429.1 96.59 411.6C96.2 407.8 96 403.9 96 400C96 339.6 143.9 290.3 203.7 288.1L319.8 392.5C319.9 394.1 320 397.5 320 400V400z"/></svg>';
 const download = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 2 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
 
 const graphColors = [
@@ -44,62 +76,79 @@ const graphColors = [
     "thistle"
 ];
 
+//language support
+const lang = (window as any).lang as (key: string) => string;
+
 const DOM = {
-    freq: document.querySelector('#sub-frequency') as HTMLDivElement,
-    ampl: document.querySelector('#sub-amplitude') as HTMLDivElement,
-    duty: document.querySelector('#sub-duty') as HTMLDivElement,
-    skew: document.querySelector('#sub-skew') as HTMLDivElement,
-    phase: document.querySelector('#sub-phase') as HTMLDivElement,
+    freq:   document.querySelector('#sub-frequency') as HTMLDivElement,
+    ampl:   document.querySelector('#sub-amplitude') as HTMLDivElement,
+    duty:   document.querySelector('#sub-duty') as HTMLDivElement,
+    skew:   document.querySelector('#sub-skew') as HTMLDivElement,
+    phase:  document.querySelector('#sub-phase') as HTMLDivElement,
     //bias: document.querySelector('#sub-bias'),
 
-    waveList: document.querySelector('#wave-boxes') as HTMLDivElement,
+    waveList:   document.querySelector('#wave-boxes') as HTMLDivElement,
     waveSelect: document.querySelector('#wave-select') as HTMLSelectElement,
-    btnPlay: document.querySelector('#btn-play') as HTMLAnchorElement | null,
+    btnPlay:    document.querySelector('#btn-play') as HTMLAnchorElement | null,
 
-    optionsGrid: document.querySelector('#options-grid') as HTMLInputElement,
-    optionsMinorGrid: document.querySelector('#options-minor-grid') as HTMLInputElement,
+    optionsGrid:        document.querySelector('#options-grid') as HTMLInputElement,
+    optionsMinorGrid:   document.querySelector('#options-minor-grid') as HTMLInputElement,
     optionsAxisNumbers: document.querySelector('#options-axis-number') as HTMLInputElement,
-    optionsDegrees: document.querySelector('#options-degrees') as HTMLInputElement,
-    optionsRadians: document.querySelector('#options-radians') as HTMLInputElement,
+    optionsDegrees:     document.querySelector('#options-degrees') as HTMLInputElement,
+    optionsRadians:     document.querySelector('#options-radians') as HTMLInputElement,
 
-    content: document.querySelector('#content') as HTMLDivElement,
+    content:    document.querySelector('#content') as HTMLDivElement,
 
-    wavePanel: document.querySelector('#wave-panel') as HTMLDivElement,
+    wavePanel:  document.querySelector('#wave-panel') as HTMLDivElement,
     audioPanel: document.querySelector('#audio-panel') as HTMLDivElement
 }
 
 
 
 class Line{
-    color: string;
-    name: string;
-    id: number;
-    type: LineType;
+    private color: string;
+    private name: string;
+    private id: number;
+    readonly type: LineType;
     parser: ExpressionParser;
-    worker?: Worker;
-    calculating: boolean = false;
+	private worker?: Worker;
+	private useWorker = false;
     audioData: AudioSpec;
-    playing = false;
-    generated = false;
-    audioFn: AudioFn | undefined;
-    isSimpleVariable = false;
-    variableName = '';
-    editHandler: ((mathField: MathQuill.v3.EditableMathQuill) => void ) = () => {};
+    private playing = false;
+    private generated = false;
+    private audioFn: AudioFn | undefined;
+    private variableName = '';
+    private editHandler: ((mathField: MathQuill.v3.EditableMathQuill) => void ) = () => {};
 
-    DOM = {
-        subContainer: undefined as (HTMLDivElement | undefined),
-        playbackOptions: undefined as (HTMLDivElement | undefined),
-        audioBtn: undefined as (HTMLAnchorElement | undefined),
-        fnType: undefined as (HTMLSpanElement | undefined),
-        sliderGroup: undefined as (HTMLDivElement | undefined),
-        sliderSetup: undefined as (HTMLDivElement | undefined),
-        slider: undefined as (HTMLInputElement | undefined),
-        clipping: undefined as (HTMLDivElement | undefined),
-        fnInput: undefined as (MathQuill.v3.EditableMathQuill | undefined)
-    }
+	DOM: {
+		subContainer:    HTMLDivElement,
+		playbackOptions: HTMLDivElement,
+		audioBtn:        HTMLAnchorElement,
+		fnType:          HTMLSpanElement,
+		sliderGroup:     HTMLDivElement,
+		sliderSetup:     HTMLDivElement,
+		slider:          HTMLInputElement,
+		clipping?:       HTMLDivElement,
+		fnInput?:        MathQuill.v3.EditableMathQuill,
+		visibilityBtn:   HTMLAnchorElement,
+		colorBtn:        HTMLAnchorElement,
+		nameInput:       HTMLInputElement,
+	}
 
     constructor(type: LineType) {
-        this.type = type;
+		this.type = type;
+		this.DOM = {
+			subContainer:    document.createElement('div'),
+			playbackOptions: document.createElement('div'),
+			audioBtn:        document.createElement('a'),
+			fnType:          document.createElement('span'),
+			sliderGroup:     document.createElement('div'),
+			sliderSetup:     document.createElement('div'),
+			slider:          document.createElement('input'),
+			visibilityBtn:   document.createElement('a'),
+			colorBtn:        document.createElement('a'),
+			nameInput:       document.createElement('input'),
+		};
         this.name = this.generateName();
         this.color = this.generateColor();
         this.parser = new ExpressionParser();
@@ -129,48 +178,103 @@ class Line{
         this.id = graph.addLine(this.name, this.color);
         this.createWaveBox();
 
-        if (this.type == LineType.expression || this.type == LineType.audio) {
-
-            //init worker
-            this.worker = new Worker(window.location.pathname + 'js/worker.js', { type: "module" });
-            this.worker.onmessage = (e) => {
-                //console.log('received data from ' + this.name);
-                const recvline = e.data as IWorkerReceiveData;
-                if (recvline.finished) {
-                    this.calculating = false;
-                }
-                graph.getLine(this.id).points = recvline.points;
-                graph.draw();
-            }
-
-            this.worker.onerror = (error) => {
-                console.error(`Worker error: ${error.message}`);
-            };
-
-            this.updateWorkerFunctions();
-        }
         if (this.type == LineType.audio) {
 			this.audioDataChanged();
 			graph.setInspectMode(this.id, "x");
         }
-    }
+	}
+	
+	spawnWorker() {
+		this.worker = new Worker(window.location.pathname + 'js/worker.js', { type: "module" });
+		this.worker.onmessage = (e) => {
+			const recvline = e.data as IWorkerReceiveData;
+			graph.getLine(this.id).points = recvline.points;
+			graph.draw();
+		}
 
-    generateName() {
+		this.worker.onerror = (error) => {
+			console.error(`Worker error: ${error.message}`);
+		};
+	}
+
+	killWorker() {
+		this.worker?.terminate();
+		delete this.worker;
+	}
+
+    private generateName() {
         if (this.type == LineType.rawData) {
-            return 'File ' + idCounter;
+            return 'File ' + lines.length;
         }
         else if (this.type == LineType.audio) {
-            return 'Audio ' + idCounter;
+			return 'Audio ' + lines.length;
         }
-        return 'Line ' + idCounter;
+		return 'Line ' + lines.length;
     }
 
-    generateColor() {
+    private generateColor() {
         return graphColors[Math.floor((Math.random() * 100) % graphColors.length)] ?? 'white';//'#' + Math.floor(Math.random() * 16777215).toString(16);
-    }
+	}
 
-    createWaveBox() {
-        this.DOM.subContainer = document.createElement('div');
+	getVisibility() {
+		return graph.getLine(this.id).on;
+	}
+	
+	setVisibility(visible: boolean) {
+		graph.getLine(this.id).on = visible;
+		this.DOM.visibilityBtn.innerHTML = visible ? eyeON : eyeOFF;
+		graph.draw();
+	}
+
+	getColor() {
+		return this.color;
+	}
+
+	setColor(color: string) {
+		this.color = color;
+		this.DOM.colorBtn.querySelector('svg')?.setAttribute('fill', this.color);
+		graph.getLine(this.id).color = this.color;
+		graph.draw();
+	}
+
+	getName() {
+		return this.name;
+	}
+
+	setName(name: string) {
+		this.name = name;
+		this.DOM.nameInput.value = this.name
+		graph.getLine(this.id).name = this.name;
+	}
+
+	getExpression() {
+		return this.DOM.fnInput?.latex();
+	}
+
+	setExpression(expr: string) {
+		this.DOM.fnInput?.latex(expr);
+		if (this.DOM.fnInput) this.editHandler(this.DOM.fnInput);
+	}
+
+	destruct() {
+		this.DOM.subContainer.remove();
+		this.killWorker();
+		if (this.type == LineType.variable || this.type == LineType.function) {
+			delete this.parser.variables[this.variableName];
+			delete this.parser.functions[this.variableName];
+			for (const line of lines) {
+				//line.updateWorkerFunctions();
+				line.calculate();
+			}
+		}
+		graph.removeLine(this.id);
+		graph.draw();
+		audioMgr.removeNode(this.id);
+		//remove itself from lines
+		delete lines.splice(lines.indexOf(this), 1)[0];
+	}
+
+    private createWaveBox() {
         this.DOM.subContainer.classList.add('sub-container', 'rounded', 'wave-box');
 
         // Row 1
@@ -178,7 +282,6 @@ class Line{
         row1.classList.add('input-group');
 
         if (this.type == LineType.variable || this.type == LineType.function) {
-            this.DOM.fnType = document.createElement('span');
             this.DOM.fnType.classList.add('input-group-text', 'input-label-box', 'user-select-none');
             this.DOM.fnType.innerHTML = this.type == LineType.variable ? 'Var:' : 'Fn:';
             row1.appendChild(this.DOM.fnType);
@@ -226,20 +329,15 @@ class Line{
         DOM.waveList.appendChild(this.DOM.subContainer);
     }
 
-    addVisibilityBtn(parent: HTMLElement) {
-        const btn1 = document.createElement('a');
-        btn1.type = 'button';
-        btn1.classList.add('btn', 'btn-secondary', 'wave-btn');
-        btn1.innerHTML = eyeON;
-        btn1.addEventListener('click', () => {
-            //change visibility
-            const line = graph.getLine(this.id);
-            line.on = !line.on;
-            btn1.innerHTML = line.on ? eyeON : eyeOFF;
-            graph.draw();
-        });
-        parent.appendChild(btn1);
-    }
+	private addVisibilityBtn(parent: HTMLElement) {
+		this.DOM.visibilityBtn.type = 'button';
+		this.DOM.visibilityBtn.classList.add('btn', 'btn-secondary', 'wave-btn');
+		this.DOM.visibilityBtn.innerHTML = eyeON;
+		this.DOM.visibilityBtn.addEventListener('click', () => {
+			this.setVisibility(!this.getVisibility());
+		});
+		parent.appendChild(this.DOM.visibilityBtn);
+	}
 
     addColorDropdown(parent: HTMLElement) {
         const colorDropdown = document.createElement('ul');
@@ -250,53 +348,35 @@ class Line{
         for (const color of graphColors) {
             const colorBtn = document.createElement('div');
             colorBtn.classList.add('color-picker-button');
-            colorBtn.style.backgroundColor = color;
-            colInner.append(colorBtn);
+			colorBtn.style.setProperty('background-color', color, 'important');
+			colInner.append(colorBtn);
+			colorBtn.addEventListener('click', () => {
+				this.setColor(colorBtn.style.backgroundColor);
+			});
         }
         colorDropdown.appendChild(colInner);
 
-        const colorBtn = document.createElement('a');
-        colorBtn.type = 'button';
-        colorBtn.classList.add('btn', 'btn-secondary', 'wave-btn');
-        colorBtn.innerHTML = brush;
-        colorBtn.setAttribute('data-bs-toggle', 'dropdown');
-        colorBtn.querySelector('svg')?.setAttribute('fill', this.color);
-        colorBtn.ariaExpanded = 'false';
-        colorBtn.addEventListener('click', (e) => {
-            //change color
-
-            //assing click handlers to color picker
-            const btns = colorDropdown.querySelectorAll('.color-picker-button') as NodeListOf<HTMLDivElement>;
-            for (const btn of btns) {
-                btn.addEventListener('click', () => {
-                    this.color = btn.style.backgroundColor;
-                    colorBtn.querySelector('svg')?.setAttribute('fill', this.color);
-                    graph.getLine(this.id).color = this.color;
-                    graph.draw();
-                });
-            }
-        });
-        parent.appendChild(colorBtn);
+        this.DOM.colorBtn.type = 'button';
+        this.DOM.colorBtn.classList.add('btn', 'btn-secondary', 'wave-btn');
+        this.DOM.colorBtn.innerHTML = brush;
+        this.DOM.colorBtn.setAttribute('data-bs-toggle', 'dropdown');
+        this.DOM.colorBtn.querySelector('svg')?.setAttribute('fill', this.color);
+        this.DOM.colorBtn.ariaExpanded = 'false';
+		parent.appendChild(this.DOM.colorBtn);
         parent.appendChild(colorDropdown);
     }
 
     addIdInput(parent: HTMLElement) {
-        const idInput = document.createElement('input');
-        idInput.type = 'text';
-        idInput.classList.add('form-control');
-        idInput.value = this.name;
-        idInput.addEventListener('input', (e) => {
-            //change name
-            graph.getLine(this.id).name = idInput.value;
-            //graph.draw();
+        this.DOM.nameInput.type = 'text';
+        this.DOM.nameInput.classList.add('form-control');
+        this.DOM.nameInput.value = this.name;
+        this.DOM.nameInput.addEventListener('input', (e) => {
+			this.setName(this.DOM.nameInput.value);
         });
-        parent.appendChild(idInput);
+		parent.appendChild(this.DOM.nameInput);
     }
 
     addVariableSlider(parent: HTMLElement) {
-        this.DOM.sliderGroup = document.createElement('div');
-        this.DOM.sliderSetup = document.createElement('div');
-        this.DOM.slider = document.createElement('input');
 
         //this.DOM.sliderGroup.classList.add('d-flex', 'flex-column');
         this.DOM.sliderGroup.setAttribute('hidden', '');
@@ -321,43 +401,37 @@ class Line{
 
         this.DOM.slider.type = 'range';
         this.DOM.slider.min = '0';
-        this.DOM.slider.max = '10';
+		this.DOM.slider.max = '10';
+		this.DOM.slider.step = '1';
         this.DOM.slider.classList.add('form-range', 'input-slider', 'mt-2');
 
         this.DOM.sliderSetup.querySelector('input[inp-min]')?.addEventListener('input', (e) => {
-            this.DOM.slider!.min = (e.target as HTMLInputElement).value;
+            this.DOM.slider.min = (e.target as HTMLInputElement).value;
         });
 
         this.DOM.sliderSetup.querySelector('input[inp-max]')?.addEventListener('input', (e) => {
-            this.DOM.slider!.max = (e.target as HTMLInputElement).value;
+            this.DOM.slider.max = (e.target as HTMLInputElement).value;
         });
 
         this.DOM.sliderSetup.querySelector('input[inp-step]')?.addEventListener('input', (e) => {
-            this.DOM.slider!.step = (e.target as HTMLInputElement).value;
+            this.DOM.slider.step = (e.target as HTMLInputElement).value;
         });
 
         this.DOM.slider.addEventListener('input', () => {
-            //(this.DOM.subContainer?.querySelector('math-field') as MathfieldElement).setValue(this.variableName + '=' + this.DOM.slider?.value, {suppressChangeNotifications: false});
-            this.DOM.fnInput?.latex(this.variableName + '=' + this.DOM.slider?.value);
-            if(this.DOM.fnInput) this.editHandler(this.DOM.fnInput);
+			this.setExpression(this.variableName + '=' + this.DOM.slider.value);
         });
-
 
         this.DOM.sliderGroup.appendChild(this.DOM.slider);
         this.DOM.sliderGroup.appendChild(this.DOM.sliderSetup);
         parent.appendChild(this.DOM.sliderGroup);
-
-
     }
 
     addPlayBtn(parent: HTMLElement) {
-        const btn2 = document.createElement('a');
-        btn2.type = 'button';
-        btn2.classList.add('btn', 'btn-success', 'wave-btn');
-        btn2.innerHTML = play;
-        btn2.addEventListener('click', () => this.toggleAudio());
-        this.DOM.audioBtn = btn2;
-        parent.appendChild(btn2);
+        this.DOM.audioBtn.type = 'button';
+        this.DOM.audioBtn.classList.add('btn', 'btn-success', 'wave-btn');
+        this.DOM.audioBtn.innerHTML = play;
+        this.DOM.audioBtn.addEventListener('click', () => this.toggleAudio());
+		parent.appendChild(this.DOM.audioBtn);
     }
 
     addPlaybackSwitch(parent: HTMLElement) {
@@ -367,7 +441,7 @@ class Line{
         btn1.innerHTML = speaker;
         btn1.addEventListener('click', () => {
             //toggle playback visibility
-            this.DOM.playbackOptions?.toggleAttribute('hidden');
+            this.DOM.playbackOptions.toggleAttribute('hidden');
         });
         parent.appendChild(btn1);
     }
@@ -386,30 +460,13 @@ class Line{
         btn4.type = 'button';
         btn4.classList.add('btn', 'btn-danger', 'wave-btn');
         btn4.innerHTML = '<img src="/assets/images/trash.svg">';
-        btn4.addEventListener('click', (e) => {
-            //remove
-            this.DOM.subContainer?.remove();
-            this.worker?.terminate();
-            if (this.type == LineType.variable || this.type == LineType.function) {
-                delete this.parser.variables[this.variableName];
-                delete this.parser.functions[this.variableName];
-                for (const lnKey in lines) {
-                    const ln = lines[lnKey];
-                    ln?.updateWorkerFunctions();
-                    ln?.calculate();
-                }
-            }
-            graph.removeLine(this.id);
-            graph.draw();
-            audioMgr.removeNode(this.id);
-            //remove itself from lines
-            delete lines[this.id];
+        btn4.addEventListener('click', () => {
+			this.destruct();
         });
         parent.appendChild(btn4);
     }
 
     addPlaybackOptions(parent: HTMLElement) {
-        this.DOM.playbackOptions = document.createElement('div');
         this.DOM.playbackOptions.setAttribute('hidden', '');
         this.DOM.playbackOptions.innerHTML = `
         <div class="sub-container rounded" style="background-color: #111">
@@ -488,7 +545,7 @@ class Line{
         }
 
         this.addPlayBtn(this.DOM.playbackOptions.querySelector('.playback-options')!);
-        this.DOM.audioBtn!.style.marginLeft = 'auto';
+        this.DOM.audioBtn.style.marginLeft = 'auto';
         parent.appendChild(this.DOM.playbackOptions);
     }
 
@@ -508,7 +565,7 @@ class Line{
             fileInput.files[0]!.arrayBuffer().then((data) => {
                 if (this.playing) this.toggleAudio();
                 const pr = audioMgr.addNode(this.id, this.audioData, undefined, data);
-                if (pr instanceof Promise<number | undefined>) {
+                if (pr instanceof Promise) {
                     pr.then((val) => {
                         if (this.DOM.playbackOptions && val !== undefined) {
                             const dStart = this.DOM.playbackOptions.querySelector(`#start-input-${this.id}`) as HTMLInputElement;
@@ -556,17 +613,17 @@ class Line{
                 delete this.parser.variables['y'];
                 switch (this.parser.getExpressionType()) {
                     case ExpressionType.FUNCTION:
-                        if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(x):';
+                        this.DOM.fnType.innerHTML = 'f(x):';
                         this.parser.setVariable('x', 0);
                         graph.setInspectMode(this.id, 'x');
                         break;
                     case ExpressionType.YFUNCTION:
-                        if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(y):';
+                        this.DOM.fnType.innerHTML = 'f(y):';
                         this.parser.setVariable('y', 0);
                         graph.setInspectMode(this.id, 'y');
                         break;
                     case ExpressionType.EQUATION:
-                        if (this.DOM.fnType) this.DOM.fnType.innerHTML = 'f(x,y):';
+                        this.DOM.fnType.innerHTML = 'f(x,y):';
                         this.parser.setVariable('x', 0);
                         this.parser.setVariable('y', 0);
                         graph.setInspectMode(this.id, 'point');
@@ -576,14 +633,23 @@ class Line{
                     //simple variables (can have sliders)
                     const match = /^([a-z])=([+\-]?[0-9.]+)$/i.exec(expression);
                     if (match) {
-                        this.DOM.sliderGroup?.removeAttribute('hidden');
+                        this.DOM.sliderGroup.removeAttribute('hidden');
                         this.variableName = match[1]!;
-                        if (this.DOM.slider) {
-                            this.DOM.slider.value = match[2]!;
+						if (this.DOM.slider) {
+							const val = match[2]!;
+							if (parseFloat(val) > parseFloat(this.DOM.slider.max)) {
+								this.DOM.slider.max = val;
+								(this.DOM.sliderSetup.querySelector('input[inp-max]') as HTMLInputElement).value = val;
+							}
+							if (parseFloat(val) < parseFloat(this.DOM.slider.min)) {
+								this.DOM.slider.min = val;
+								(this.DOM.sliderSetup.querySelector('input[inp-min]') as HTMLInputElement).value = val;
+							}
+                            this.DOM.slider.value = val;
                         }
                     }
                     else {
-                        this.DOM.sliderGroup?.setAttribute('hidden', '');
+                        this.DOM.sliderGroup.setAttribute('hidden', '');
                         this.variableName = expression[0] ?? '';
                     }
                 }
@@ -595,8 +661,16 @@ class Line{
                     else {
                         this.variableName = '';
                     }
-                }
-                this.parser.evaluate();
+				}
+				this.parser.evaluate();
+				// const startTime = performance.now();
+				// for (let i = 0; i < 50; ++i) {
+				// 	this.parser.setVariable('x', Math.random() * 1000);
+				// 	this.parser.evaluate(this.parser.outputQueue);
+				// }
+				// const time = performance.now() - startTime;
+				// console.log(time / 50);
+				this.useWorker = true;
             }
             catch (e) {
                 if (e instanceof LatexParseError) {
@@ -619,10 +693,9 @@ class Line{
 
             if (this.type == LineType.function || this.type == LineType.variable) {
                 //update ALL workers
-                for (const lnKey in lines) {
-                    const ln = lines[lnKey];
-                    ln?.updateWorkerFunctions();
-                    ln?.calculate();
+                for (const line of lines) {
+                    //line.updateWorkerFunctions();
+                    line.calculate();
                 }
             }
 
@@ -642,13 +715,6 @@ class Line{
             supSubsRequireOperand: true,
             charsThatBreakOutOfSupSub: '+-=<>',
             autoSubscriptNumerals: false,
-            // substituteTextArea: () => {
-            //    const el = document.createElement('span');
-            //    el.id = "testcustomid";
-            //    el.classList.add('form-control')
-            //    el.tabIndex = 0;
-            //    return el;
-            // },
             autoCommands: 'pi tau infinity infty sqrt sum prod coprod int',
             autoOperatorNames: this.parser.getSupportedFunctions(),
             autoParenthesizedFunctions: this.parser.getAutoParenthesisedFunctions(),
@@ -706,15 +772,15 @@ class Line{
         if (this.playing) {
             this.playing = false;
             audioMgr.stopNode(this.id);
-            if (boxBtn) boxBtn.innerHTML = play;
+            boxBtn.innerHTML = play;
             if (topBtn) topBtn.innerHTML = play;
         }
         else {
-            if (boxBtn) boxBtn.innerHTML = pause;
+            boxBtn.innerHTML = pause;
             if (topBtn) topBtn.innerHTML = pause;
             audioMgr.startNode(this.id, () => {
                 this.playing = false;
-                if (boxBtn) boxBtn.innerHTML = play;
+                boxBtn.innerHTML = play;
                 if (topBtn) topBtn.innerHTML = play;
             });
             this.playing = true;
@@ -797,57 +863,44 @@ class Line{
         }
         if (this.playing) audioMgr.startNode(this.id);
         graph.draw();
-    }
+	}
 
-    calculate() {
-        if (!this.calculating && this.worker) {
-            this.calculating = true;
-            this.worker.postMessage({
-                msg: 'calculate',
-                data: {
-                    expression: this.parser.outputQueue,
-                    width: graph.width,
-                    height: graph.height,
-                    xOffset: graph.xOffset,
-                    yOffset: graph.yOffset,
-                    xScale: graph.xScale,
-					yScale: graph.yScale,
-					detectDiscontinuity: (this.type == LineType.audio || this.type == LineType.rawData) ? false : true
-                } as IWorkerCalculateData
-            });
-        }
-    }
+	calculate() {
+		const data = {
+			expression: this.parser.outputQueue,
+			width: graph.width,
+			height: graph.height,
+			xOffset: graph.xOffset,
+			yOffset: graph.yOffset,
+			xScale: graph.xScale,
+			yScale: graph.yScale,
+			rules: this.parser.rules,
+			variables: this.parser.variables,
+			functions: this.parser.functions,
+			detectDiscontinuity: (this.type == LineType.audio || this.type == LineType.rawData) ? false : true
+		} as IWorkerCalculateData;
 
-    updateWorkerFunctions() {
-        this.worker?.postMessage({
-            msg: 'updateFn',
-            data: {
-                variables: this.parser.variables,
-                functions: this.parser.functions
-            } as IWorkerUpdateFunctions
-        });
-        for (const line in lines) {
-            if (lines[line]!.DOM.fnInput && lines[line]!.type == LineType.expression)
-                lines[line]!.editHandler(lines[line]!.DOM.fnInput!);
-        }
-    }
-
-    updateWorkerRules() {
-        this.worker?.postMessage({
-            msg: 'setRules',
-            data: this.parser.rules
-        });
+		if (this.useWorker) {
+			this.killWorker();
+			this.spawnWorker();
+			this.worker?.postMessage({
+				msg: 'calculate',
+				data: data
+			});
+		}
+		else{
+			calculateLine(data, this.parser, graph.getLine(this.id).points);
+		}
     }
 }
 
 const audioMgr = new AudioManager();
-var lines: { [index: number]: Line } = {};
+var lines: Line[] = [];
 var variables: Variables = {};
 var functions: Functions = {};
 var keyboard: Keyboard;
 var keyboardClosed = false;
 
-var idCounter = -1;
 var currentEditedLine: Line;
 
 const graph = new Graph(document.querySelector('#graph') as HTMLCanvasElement);
@@ -864,28 +917,27 @@ document.querySelector('#graph-zoom-home')?.addEventListener('click', () => {
 });
 
 graph.onRequestData = () => {
-    for (const line in lines) {
-        lines[line]!.parser.rules.resulution = 1 / graph.xScale;
-        lines[line]!.updateWorkerRules();
+    for (const line of lines) {
+        line.parser.rules.resulution = 1 / graph.xScale;
         //console.log('requesting data from ' + line);
-        lines[line]!.calculate();
+        line.calculate();
     }
 };
 
 document.querySelector('#add')?.addEventListener('click', () => {
-    lines[++idCounter] = new Line(LineType.expression);
+	lines.push(new Line(LineType.expression));
 });
 document.querySelector('#add-audio')?.addEventListener('click', () => {
-    lines[++idCounter] = new Line(LineType.audio);
+	lines.push(new Line(LineType.audio));
 });
 document.querySelector('#add-data')?.addEventListener('click', () => {
-    lines[++idCounter] = new Line(LineType.rawData);
+	lines.push(new Line(LineType.rawData));
 });
 document.querySelector('#add-variable')?.addEventListener('click', () => {
-    lines[++idCounter] = new Line(LineType.variable);
+	lines.push(new Line(LineType.variable));
 });
 document.querySelector('#add-function')?.addEventListener('click', () => {
-    lines[++idCounter] = new Line(LineType.function);
+	lines.push(new Line(LineType.function));
 });
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -897,7 +949,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // @ts-ignore
     //[...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, { delay: { show: 1000, hide: 0} }));
 
-    lines[++idCounter] = new Line(LineType.expression);
+	//add 1 expression box by default
+	lines.push(new Line(LineType.expression));
     graph.fixSize();
 	graph.resetZoom();
 
@@ -997,19 +1050,26 @@ DOM.optionsAxisNumbers?.addEventListener('change', () => {
 });
 
 DOM.optionsDegrees?.addEventListener('click', () => {
-    for (const line in lines) {
-        if(lines[line]) lines[line]!.parser.rules.useDegrees = true;
-        lines[line]?.updateWorkerRules();
+    for (const line of lines) {
+        line.parser.rules.useDegrees = true;
+        //line.updateWorkerRules();
     }
     graph.draw(true);
 });
 
 DOM.optionsRadians?.addEventListener('click', () => {
-    for (const line in lines) {
-        if (lines[line]) lines[line]!.parser.rules.useDegrees = false;
-        lines[line]?.updateWorkerRules();
+    for (const line of lines) {
+        line.parser.rules.useDegrees = false;
+        //line.updateWorkerRules();
     }
     graph.draw(true);
+});
+
+document.querySelector('#savebtn')?.addEventListener('click', () => {
+	saveData('localStorage');
+});
+document.querySelector('#loadbtn')?.addEventListener('click', () => {
+	loadData('localStorage');
 });
 
 
@@ -1058,26 +1118,131 @@ function addSliderSyncGroup(idPrefix: string, min: number, max: number, callback
 }
 
 
-// .____________________________________________________________.
-// |          | freq | ampl | duty | skew | phase | bias | time |
-// |----------|------|------|------|------|-------|------|------|
-// | Sine     | yes  | yes  | no   | no   | yes   | yes  | no   |
-// | Square   | yes  | yes  | yes  | no   | yes   | yes  | no   |
-// | Triangle | yes  | yes  | no   | yes  | yes   | yes  | no   |
-// | Custom   | no   | no   | no   | no   | no    | no   | yes  |
-// |----------|------|------|------|------|-------|------|------|
+// ._____________________________________________________.
+// |          | freq | ampl | duty | skew | phase | bias |
+// |----------|------|------|------|------|-------|------|
+// | Sine     | yes  | yes  | no   | no   | yes   | yes  |
+// | Square   | yes  | yes  | yes  | no   | yes   | yes  |
+// | Triangle | yes  | yes  | no   | yes  | yes   | yes  |
+// |----------|------|------|------|------|-------|------|
 //
 function updateBoxVisibility() {
-    if (currentEditedLine.audioData.waveType == 'square') {
+    if (currentEditedLine.audioData.waveType == 'square')
         DOM.duty.classList.remove('hidden');
-    }
-    else {
-        DOM.duty.classList.add('hidden');
-    }
-    if (currentEditedLine.audioData.waveType == 'triangle') {
+    else
+		DOM.duty.classList.add('hidden');
+	
+    if (currentEditedLine.audioData.waveType == 'triangle')
         DOM.skew.classList.remove('hidden');
-    }
-    else {
+    else
         DOM.skew.classList.add('hidden');
-    }
+}
+
+function saveData(where: 'localStorage' | 'download') {
+	let linesToSave = [];
+
+	for (const line of lines) {
+		let slider;
+		if (line.type == LineType.variable) {
+			slider = {
+				value: parseFloat(line.DOM.slider.value),
+				min: parseFloat(line.DOM.slider.min),
+				max: parseFloat(line.DOM.slider.max),
+				step: parseFloat(line.DOM.slider.step)
+			}
+		}
+		linesToSave.push({
+			name: line.getName(),
+			color: line.getColor(),
+			type: line.type,
+			audioData: line.audioData,
+			visible: line.getVisibility(),
+			expression: line.getExpression(),
+			variableSlider: slider
+		});
+	}
+
+	const data: SaveData = {
+		app: 'Graphing calculator (Graph.js)',
+		version: '1.7',
+		name: '',
+		dateSaved: new Date().toUTCString(),
+		keyboardClosed: keyboardClosed,
+		xOffset: graph.xOffset,
+		yOffset: graph.yOffset,
+		xScale: graph.xScale,
+		yScale: graph.yScale,
+		options: {
+			gridAxis: graph.options.grid,
+			minorGrid: graph.options.minorGrid,
+			axisNumbers: graph.options.axisNumbers,
+			connectPoints: true,
+			degrees: lines[0]?.parser.rules.useDegrees ?? false
+		},
+		lines: linesToSave
+	}
+	localStorage.setItem('savedData', JSON.stringify(data));
+}
+
+function loadData(source: 'localStorage' | 'upload') {
+	const st = localStorage.getItem('savedData');
+	if (st) {
+		const data: SaveData = JSON.parse(st);
+
+		//clean everything first
+		for (const line of lines) {
+			line.destruct();
+		}
+		DOM.waveList.replaceChildren();
+
+		keyboardClosed = data.keyboardClosed;
+		graph.xOffset = data.xOffset;
+		graph.yOffset = data.yOffset;
+		graph.xScale = data.xScale;
+		graph.yScale = data.yScale;
+		graph.options.grid = data.options.gridAxis;
+		graph.options.minorGrid = data.options.minorGrid;
+		graph.options.axisNumbers = data.options.axisNumbers;
+
+		for (const line of data.lines) {
+			let newLine;
+			switch (line.type) {
+				case LineType.expression:
+					newLine = new Line(LineType.expression);
+					break;
+				case LineType.audio:
+					newLine = new Line(LineType.audio);
+					break;
+				case LineType.rawData:
+					newLine = new Line(LineType.rawData);
+					break;
+				case LineType.variable:
+					newLine = new Line(LineType.variable);
+					break;
+				case LineType.function:
+					newLine = new Line(LineType.function);
+					break;
+			}
+			newLine.parser.rules.resulution = 1 / graph.xScale;
+
+			newLine.setName(line.name);
+			newLine.setColor(line.color);
+			newLine.setVisibility(line.visible);
+			if(line.expression) newLine.setExpression(line.expression);
+			newLine.audioData = line.audioData;
+			newLine.audioDataChanged();
+
+			if (newLine.DOM.slider && line.variableSlider) {
+				newLine.DOM.slider.value = line.variableSlider.value.toString();
+				newLine.DOM.slider.min = line.variableSlider.min.toString();
+				newLine.DOM.slider.max = line.variableSlider.max.toString();
+				newLine.DOM.slider.step = line.variableSlider.step.toString();
+			}
+
+			lines.push(newLine);
+		}
+
+
+		graph.draw(true);
+	}
 }

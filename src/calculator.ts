@@ -204,16 +204,16 @@ class Line{
 
     private generateName() {
         if (this.type == LineType.rawData) {
-            return 'File ' + lines.length;
+            return lang('file') + ' ' + lines.length;
         }
         else if (this.type == LineType.audio) {
-			return 'Audio ' + lines.length;
+			return lang('audio') + ' ' + lines.length;
         }
-		return 'Line ' + lines.length;
+		return lang('line') + ' ' + lines.length;
     }
 
     private generateColor() {
-        return graphColors[Math.floor((Math.random() * 100) % graphColors.length)] ?? 'white';//'#' + Math.floor(Math.random() * 16777215).toString(16);
+        return graphColors[Math.floor((Math.random() * 100) % graphColors.length)] ?? 'white';
 	}
 
 	getVisibility() {
@@ -386,15 +386,15 @@ class Line{
         this.DOM.sliderSetup.classList.add('slider-config');
         this.DOM.sliderSetup.innerHTML = `
             <div class="slider-sub">
-                <span class="me-1 user-select-none">Min:</span>
+                <span class="me-1 user-select-none">${lang('min')}:</span>
                 <input type="text" inp-min class="small-input" value="0">
             </div>
             <div class="slider-sub">
-                <span class="me-1 user-select-none">Max:</span>
+                <span class="me-1 user-select-none">${lang('max')}:</span>
                 <input type="text" inp-max class="small-input" value="10">
             </div>
             <div class="slider-sub">
-                <span class="me-1 user-select-none">Step:</span>
+                <span class="me-1 user-select-none">${lang('step')}:</span>
                 <input type="text" inp-step class="small-input" value="1">
             </div>
         `;//<span role="textbox" contenteditable class="small-input" value="440">440</span>
@@ -471,16 +471,16 @@ class Line{
         this.DOM.playbackOptions.innerHTML = `
         <div class="sub-container rounded" style="background-color: #111">
             <div class="d-flex">
-                <h6>Playback:</h6>
+                <h6>${lang('playback')}:</h6>
                 <a href="#" id="download-${this.id}" class="btn btn-info ms-auto" style="width: 30px; height: 25px; padding: 0">${download}</a>
             </div>
             <div class="input-group mt-1">
-                <span class="input-group-text input-label-box">Start:</span>
+                <span class="input-group-text input-label-box">${lang('start')}:</span>
                 <input type="number" id="start-input-${this.id}" class="form-control" value="0" step="1">
                 <span class="input-group-text input-label-box">s</span>
             </div>
             <div class="input-group mt-1">
-                <span class="input-group-text input-label-box">End:</span>
+                <span class="input-group-text input-label-box">${lang('end')}:</span>
                 <input type="number" id="end-input-${this.id}" class="form-control" value="1" step="1">
                 <span class="input-group-text input-label-box">s</span>
             </div>
@@ -488,18 +488,18 @@ class Line{
                 <div>
                     <div class="form-check mt-1">
                         <input class="form-check-input" type="checkbox" id="playback-current-view-${this.id}" disabled>
-                        <label class="form-check-label" for="playback-current-view-${this.id}">Current view</label>
+                        <label class="form-check-label" for="playback-current-view-${this.id}">${lang('current_view')}</label>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="playback-loop-${this.id}">
-                        <label class="form-check-label" for="playback-loop-${this.id}">Loop</label>
+                        <label class="form-check-label" for="playback-loop-${this.id}">${lang('loop')}</label>
                     </div>
                 </div>
             </div>
         </div>
         <div id="clipping-${this.id}" class="clipping rounded" hidden>
             <img src="/assets/images/warning.svg" style="color:black">
-            <div class="ms-2">Result audio will be clipped. Audio wave should have y between 1 and -1.</div>
+            <div class="ms-2">${lang('clipping')}</div>
         </div>
         `;
         const dCurView = this.DOM.playbackOptions.querySelector(`#playback-current-view-${this.id}`) as HTMLInputElement;
@@ -594,11 +594,17 @@ class Line{
         errorImg.src = '/assets/images/warning.svg';
         errorImg.classList.add('error-img');
         const errTooltip = document.createElement('span');
-        errTooltip.classList.add('e-tooltip', 'rounded');
+		errTooltip.classList.add('e-tooltip', 'rounded');
+		
+		const resultBox = document.createElement('span');
+		resultBox.innerHTML = '=&nbsp;1.2';
+		resultBox.classList.add('symbol', 'result-box');
+
 
         this.editHandler = (f: MathQuill.v3.EditableMathQuill) => {
             let error = false;
-            errTooltip.innerHTML = '';
+			errTooltip.innerHTML = '';
+			resultBox.style.display = 'none';
             try {
                 if (this.type == LineType.variable)
                     delete this.parser.variables[this.variableName];
@@ -627,7 +633,11 @@ class Line{
                         this.parser.setVariable('x', 0);
                         this.parser.setVariable('y', 0);
                         graph.setInspectMode(this.id, 'point');
-                        break;
+						break;
+					case ExpressionType.CONSTANT_RESULT:
+						this.DOM.fnType.innerHTML = 'n:';
+						resultBox.style.display = 'block';
+						break;
                 }
                 if (this.type == LineType.variable) {
                     //simple variables (can have sliders)
@@ -662,7 +672,7 @@ class Line{
                         this.variableName = '';
                     }
 				}
-				this.parser.evaluate();
+				resultBox.innerHTML = `=&nbsp;${this.parser.evaluate() }`;
 				// const startTime = performance.now();
 				// for (let i = 0; i < 50; ++i) {
 				// 	this.parser.setVariable('x', Math.random() * 1000);
@@ -720,7 +730,8 @@ class Line{
             autoParenthesizedFunctions: this.parser.getAutoParenthesisedFunctions(),
             handlers: {
                 edit: this.editHandler
-            }
+			},
+			typingPercentWritesPercentOf: true,
 		} as MathQuill.v3.Config);
 		
 		const textarea = fnInput.querySelector('textarea');
@@ -740,7 +751,8 @@ class Line{
 		}
 		
         fnInput.appendChild(errorImg);
-        fnInput.appendChild(errTooltip);
+		fnInput.appendChild(errTooltip);
+		fnInput.appendChild(resultBox);
         parent.appendChild(fnInput);
     }
 

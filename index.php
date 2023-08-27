@@ -117,42 +117,20 @@
 			visibility: visible;
 		}
 
-		.error-text {
-			color: red;
-		}
-
-		.warn-img {
+		.result-box {
 			position: absolute;
-			display: none;
-			z-index: 10;
-			top: 7px;
-			right: 5px;
-			user-select: none;
-		}
-
-		.input-group .w-tooltip {
-			visibility: hidden;
-			width: 100%;
-			background-color: yellow;
-			color: black;
-			text-align: left;
-			padding: 5px 10px;
-			position: absolute;
-			z-index: 10;
-			top: 120%;
+			height: min-content;
+			bottom: 6px;
+			right: 6px;
+			padding: 2px 5px;
+			background: #eee;
+			border: 1px solid #ccc;
+			border-radius: 5px;
 		}
 
 		.playback-options {
 			display: flex;
 			align-items: flex-end;
-		}
-
-		.input-group .warn-img:hover+.w-tooltip {
-			visibility: visible;
-		}
-
-		.warn-text {
-			color: orange;
 		}
 
 		.clipping {
@@ -193,7 +171,7 @@
 			flex-shrink: 0;
 		}
 
-		#wave-panel{
+		#wave-panel {
 			padding: 0 10px 10px;
 		}
 
@@ -212,11 +190,11 @@
 			filter: brightness(70%);
 		}
 
-		#panel-control-buttons{
+		#panel-control-buttons {
 			position: sticky;
 			top: 0px;
 			background: #333;
-			z-index: 10;
+			z-index: 20;
 			padding: 10px 0;
 		}
 
@@ -493,14 +471,20 @@
 							<?php insertSVG('plus'); ?>
 						</a>
 						<ul class="dropdown-menu">
-							<li><a class="dropdown-item" type="button" id="add">Expression</a></li>
-							<li><a class="dropdown-item" type="button" id="add-audio">Audio</a></li>
-							<li><a class="dropdown-item" type="button" id="add-variable">Variable</a></li>
-							<li><a class="dropdown-item" type="button" id="add-function">Function</a></li>
-							<li><a class="dropdown-item" type="button" id="add-data">File</a></li>
+							<li><a class="dropdown-item" type="button" id="add"><?php lang('graphing.expression') ?></a></li>
+							<li><a class="dropdown-item" type="button" id="add-audio"><?php lang('graphing.audio') ?></a></li>
+							<li><a class="dropdown-item" type="button" id="add-variable"><?php lang('graphing.variable') ?></a></li>
+							<li><a class="dropdown-item" type="button" id="add-function"><?php lang('graphing.function') ?></a></li>
+							<li><a class="dropdown-item" type="button" id="add-data"><?php lang('graphing.file') ?></a></li>
 						</ul>
 					</div>
 					<div class="d-flex ms-auto">
+						<a type="button" class="btn btn-secondary me-2" id="savebtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.save') ?>">
+							<?php insertSVG('download'); ?>
+						</a>
+						<a type="button" class="btn btn-secondary me-2" id="loadbtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.load') ?>">
+							<div style="transform: rotate(180deg)"><?php insertSVG('download'); ?></div>
+						</a>
 						<a type="button" class="btn btn-secondary me-2" data-bs-toggle="modal" data-bs-target="#optionsModal" id="optionsbtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.settings') ?>">
 							<?php insertSVG('settings'); ?>
 						</a>
@@ -651,11 +635,31 @@
 HTML); ?>
 
 	<?php bootstrapModal('aboutModal', $lang('aboutmodal.title'), <<<HTML
-		<h5 style="font-weight:bold;">{$lang('graphing.title')}, <span style="font-size:1rem">{$lang('aboutmodal.version')} 1.6.1</span></h5> 
+		<h5 style="font-weight:bold;">{$lang('graphing.title')}, <span style="font-size:1rem">{$lang('aboutmodal.version')} 1.7</span></h5> 
 		<span>{$lang('aboutmodal.created')}: {$lang('month.june')} 2022</span><br />
-		<span>{$lang('aboutmodal.updated')}: {$lang('month.november')} 2022</span>
-		<p>© 2022 by barty12</p>
+		<span>{$lang('aboutmodal.updated')}: {$lang('month.august')} 2023</span>
+		<p>© 2023 by barty12</p>
 HTML); ?>
+
+	<script>
+		const lng = {
+			'file': "<?php lang('graphing.file') ?>",
+			'audio': "<?php lang('graphing.audio') ?>",
+			'line': "<?php lang('graphing.line') ?>",
+			'step': "<?php lang('graphing.step') ?>",
+			'min': "<?php lang('graphing.min') ?>",
+			'max': "<?php lang('graphing.max') ?>",
+			'playback': "<?php lang('graphing.playback') ?>",
+			'start': "<?php lang('graphing.start') ?>",
+			'end': "<?php lang('graphing.end') ?>",
+			'current_view': "<?php lang('graphing.currentView') ?>",
+			'loop': "<?php lang('graphing.loop') ?>",
+			'clipping': "<?php lang('graphing.clipping') ?>",
+		}
+		window.lang = (key) => {
+			return lng[key] ?? key;
+		}
+	</script>
 
 	<!-- <script src="https://unpkg.com/@free-side/audioworklet-polyfill/dist/audioworklet-polyfill.js"></script> -->
 	<script src="js/audioworklet-polyfill.min.js"></script>

@@ -50,7 +50,8 @@ export enum ExpressionType {
     POINT,
     VARIABLE,
     CUSTOM_FUNCTION,
-    CUSTOM_VARIABLE
+	CUSTOM_VARIABLE,
+	CONSTANT_RESULT
 }
 
 export interface Token{
@@ -120,25 +121,25 @@ const functions: { [key: string]: {argc: number, fn: (args: number[]) => number,
     //trigonometric
     'sin':   { argc: 1, type: 'trig', fn: (args) => Math.sin(args[0]!) },
     'cos':   { argc: 1, type: 'trig', fn: (args) => Math.cos(args[0]!) },
-    'tan':   { argc: 1, type: 'trig', fn: (args) => Math.tan(args[0]!) },
+    'tan':   { argc: 1, type: 'trig', fn: (args) => Math.tan(args[0]!) },//sin/cos => cos != 0
     'tg':    { argc: 1, type: 'trig', fn: (args) => Math.tan(args[0]!) },
-    'csc':   { argc: 1, type: 'trig', fn: (args) => 1 / Math.sin(args[0]!) },
-    'sec':   { argc: 1, type: 'trig', fn: (args) => 1 / Math.cos(args[0]!) },
-    'cot':   { argc: 1, type: 'trig', fn: (args) => 1 / Math.tan(args[0]!) },
+    'csc':   { argc: 1, type: 'trig', fn: (args) => 1 / Math.sin(args[0]!) },//sin != 0
+    'sec':   { argc: 1, type: 'trig', fn: (args) => 1 / Math.cos(args[0]!) },//cos != 0
+    'cot':   { argc: 1, type: 'trig', fn: (args) => 1 / Math.tan(args[0]!) },//cos/sin => sin != 0
 
     //arithmetic
     'add':   { argc: 2, type: 'arith', fn: (args) => args[0]! + args[1]! },
     'sub':   { argc: 2, type: 'arith', fn: (args) => args[0]! - args[1]! },
     'mul':   { argc: 2, type: 'arith', fn: (args) => args[0]! * args[1]! },
-    'div':   { argc: 2, type: 'arith', fn: (args) => args[0]! / args[1]! },//arg1 == 0
-    'sqrt':  { argc: 1, type: 'arith', fn: (args) => Math.sqrt(args[0]!) },
+    'div':   { argc: 2, type: 'arith', fn: (args) => args[0]! / args[1]! },//arg1 != 0
+    'sqrt':  { argc: 1, type: 'arith', fn: (args) => Math.sqrt(args[0]!) },//start at 0
     'root':  { argc: 2, type: 'arith', fn: (args) => Math.pow(args[0]!, 1 / args[1]!) },
     'power': { argc: 2, type: 'arith', fn: (args) => Math.pow(args[0]!, args[1]!) },
     'pow':   { argc: 2, type: 'arith', fn: (args) => Math.pow(args[0]!, args[1]!) },
-    'ln':    { argc: 1, type: 'arith', fn: (args) => Math.log(args[0]!) },//0
-    'log':   { argc: 1, type: 'arith', fn: (args) => Math.log10(args[0]!) },//0
+    'ln':    { argc: 1, type: 'arith', fn: (args) => Math.log(args[0]!) },//arg != 0
+    'log':   { argc: 1, type: 'arith', fn: (args) => Math.log10(args[0]!) },//arg != 0
     'exp':   { argc: 1, type: 'arith', fn: (args) => Math.exp(args[0]!) },
-    'mod':   { argc: 2, type: 'stat', fn: (args) => ((args[0]! % args[1]!) + args[1]!) % args[1]! },
+	'mod': { argc: 2, type: 'stat', fn: (args) => ((args[0]! % args[1]!) + args[1]!) % args[1]! },//k = arg2
 
     //binary
     'shl':   { argc: 2, type: 'bin', fn: (args) => args[0]! << args[1]! },
@@ -229,13 +230,15 @@ export class ExpressionParser{
         isCustomFunction: false,
         isCustomVariable: false,
         useDegrees: false,
-        resulution: 0
+        resulution: 1//MUST NOT BE 0
     };
 
     problems: Problem[] = [];
 
     tokenStack: Token[] = [];//output of tokenize()
-    outputQueue: Token[] = [];//output of parse()
+	outputQueue: Token[] = [];//output of parse()
+	
+	private expressionType = ExpressionType.UNKNOWN;//will be determined after parse()
     
     latexToString(input: string) {
 
@@ -246,7 +249,7 @@ export class ExpressionParser{
         input = input.replaceAll(/(\\left)|(\\right)/g, '');
 
         //basic functions
-        input = input.replaceAll(/\\(sin|cos|tan|max|min|ln|log|exp|arcsin|arccos|arctan|sinh|cosh|tanh|sec|csc|cot|coth|cosec|cotan|ctg|arg|deg|det|dim|gcd|hom|inf|ker|lg|lim|sup)/g, (_, p1) => ` ${p1}`);
+		input = input.replaceAll(/\\(sin|cos|tan|max|min|ln|log|exp|arcsin|arccos|arctan|sinh|cosh|tanh|sec|csc|cot|coth|cosec|cotan|ctg|arg|det|dim|gcd|hom|inf|ker|lg|lim|sup)/g, (_, p1) => ` ${p1}`);//deg|
 
         //any other function
         input = input.replaceAll(/\\operatorname{([^{}]*)}/g, (_, p1) => ` ${p1}`);
@@ -890,15 +893,68 @@ export class ExpressionParser{
             throw new ParserFatalError('Parse error.');
         }
 
-        popStack();
-        //console.log(destination);
+		popStack();
+		
+		//determine expression type
+        
+		if (this.rules.isCustomFunction) {
+			return ExpressionType.CUSTOM_FUNCTION;
+		}
+		else if (this.rules.isCustomVariable) {
+			return ExpressionType.CUSTOM_VARIABLE;
+		}
+		const i = tokens.findIndex(e => e.type == TokenType.OPERATOR && operators[e.name]?.precedence == operators['=']!.precedence);///^(<|>|<=|>=|=)/.test(e.name)
+		if (i > -1) {
+			if (tokens[i]?.name != '=') {
+				return ExpressionType.INEQUALITY;
+			}
+			const left = tokens.slice(0, i);
+			if (left.length == 1 && left[0]?.type == TokenType.VARIABLE) {
+				if (left[0]?.name == 'y') {
+					//regular function
+					return ExpressionType.FUNCTION;
+				}
+				else if (left[0]?.name == 'x') {
+					//function x in terms of y
+					return ExpressionType.YFUNCTION;
+				}
+				return ExpressionType.VARIABLE;
+			}
+			//generic equation
+			return ExpressionType.EQUATION;
+		}
+		//look for x or y variables recursively
+		const traverseTokens = (tokenList: Token[]): boolean => {
+			for (const token of tokenList) {
+				if (token.type == TokenType.FUNCTION && token.arguments) {
+					for (const arg of token.arguments) {
+						if (traverseTokens(arg)) {
+							return true;
+						}
+					}
+				}
+				else if (token.type == TokenType.VARIABLE && (token.name == 'x' || token.name == 'y')) {
+					return true;
+				}
+			}
+			return false;
+		}
+		//no equal sign: regular function or constant expression
+		if (traverseTokens(tokens)) {
+			return ExpressionType.FUNCTION;
+		}
+		//no variables -> constant
+		return ExpressionType.CONSTANT_RESULT;
+
+
         return this;
     }
 
     evaluate(tokens: Token[] = this.outputQueue): number/*{ result: number, asymptotes: number[] }*/{
         const eq = tokens.findIndex(e => e.type == TokenType.OPERATOR && e.name == '=');
-        switch (this.getExpressionType(tokens)) {
-            case ExpressionType.FUNCTION:
+        switch (this.getExpressionType()) {
+			case ExpressionType.FUNCTION:
+			case ExpressionType.CONSTANT_RESULT:
                 let tok = tokens;
                 if (eq > -1) {
                     tok = tokens.slice(eq + 1);
@@ -1259,35 +1315,8 @@ export class ExpressionParser{
     }
 
 
-    getExpressionType(tokens: Token[] = this.outputQueue): ExpressionType {
-        if (this.rules.isCustomFunction/* && left.length == 1 && left[0].type == TokenType.FUNCTION*/) {
-            return ExpressionType.CUSTOM_FUNCTION;
-        }
-        else if (this.rules.isCustomVariable) {
-            return ExpressionType.CUSTOM_VARIABLE;
-        }
-        const i = tokens.findIndex(e => e.type == TokenType.OPERATOR && operators[e.name]?.precedence == operators['=']!.precedence);///^(<|>|<=|>=|=)/.test(e.name)
-        if (i > -1) {
-            if (tokens[i]?.name != '=') {
-                return ExpressionType.INEQUALITY;
-            }
-            const left = tokens.slice(0, i);
-            if (left.length == 1 && left[0]?.type == TokenType.VARIABLE) {
-                if (left[0]?.name == 'y') {
-                    //regular function
-                    return ExpressionType.FUNCTION;
-                }
-                else if (left[0]?.name == 'x') {
-                    //function x in terms of y
-                    return ExpressionType.YFUNCTION;
-                }
-                return ExpressionType.VARIABLE;
-            }
-            //generic equation
-            return ExpressionType.EQUATION;
-        }
-        //no equal sign: regular function
-        return ExpressionType.FUNCTION;
+    getExpressionType(): ExpressionType {
+		return this.expressionType;
     }
 
     getSupportedFunctions() {

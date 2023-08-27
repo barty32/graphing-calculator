@@ -1,29 +1,43 @@
  TODO list:
 
 
-priority:
- - make button toolbar sticky
- - create custom keyboard
- - fix empty parentheses
  - fix settings
  - add how to use
- - add save to local storage / export
-
+ - show const result in number
+ - add access to serial port
+ - make sidebar resizable + stick to bottom on mobile phones
+ - improve rendering algorithm (when there are many points)
+ - fix colors in dark theme
  - make frequency slider logarithmic
- - fix dpi rendering issues
- - add degree operator
  - copy handler to input
  - fix discontinuity (that sucks)
+ - add audio normalization
+ - add audio current view
+
+parser:
+ - BUG: latex integral regex is not working correctly
+ - BUG: parser class default resolution is 0 (integral evaluation stucks in a loop)
+ - fix empty parentheses
+ - add derivative ' notation
+ - add base to logarithms
+ - add support for fn^x(t)
+ - add degree operator
  - fix equations (solve them)
  - add polar functions
  - add inequalities
  - add random, lcm, gcd, nCr and nPr functions
- - add audio normalization
- - add audio current view
-
 
 
  CHANGELOG:
+
+ Done (v1.7)
+ - separated graph.ts to a library
+ - added virtual keyboard
+ - made top button toolbar sticky
+ - fixed variable slider input if higher than max
+ - improved web worker code
+ - add save to local storage / export
+ - moved string literals to language file
 
  Done (v1.6.1)
  - fixed bug with capital letters in custom functions

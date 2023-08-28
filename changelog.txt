@@ -5,7 +5,6 @@
  - add how to use
  - show const result in number
  - add access to serial port
- - make sidebar resizable + stick to bottom on mobile phones
  - improve rendering algorithm (when there are many points)
  - fix colors in dark theme
  - make frequency slider logarithmic
@@ -38,6 +37,8 @@ parser:
  - improved web worker code
  - add save to local storage / export
  - moved string literals to language file
+ - sidebar is now resizable
+ - sidebar sticks to bottom on mobile phones (viewport < 500px)
 
  Done (v1.6.1)
  - fixed bug with capital letters in custom functions

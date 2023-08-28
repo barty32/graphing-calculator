@@ -19,6 +19,35 @@
 			touch-action: none;
 		}
 
+		#content {
+			display: flex;
+			height: 100%;
+			width: 100%;
+		}
+
+		#graph-container {
+			position: relative;
+			display: flex;
+			height: 100%;
+			width: 100%;
+			/* flex-grow: 1; */
+		}
+
+		#graph {
+			border: 3px solid var(--bs-primary);
+			width: 100%;
+			height: 100%;
+		}
+
+		#side-panel {
+			/* height: 100%; */
+			background-color: #333;
+			overflow-y: auto;
+			overflow-x: hidden;
+			flex-shrink: 0;
+			flex-grow: 1;
+		}
+
 		.sub-container {
 			color: var(--bs-gray-100);
 			margin: 10px 0 0;
@@ -54,6 +83,98 @@
 		.offcanvas:not(.show),
 		.offcanvas.hiding {
 			position: absolute;
+		}
+
+		@media(min-width: 500px) {
+			.offcanvas.offcanvas-var {
+				top: 0;
+				right: 0;
+				height: 100%;
+				/* width: var(--bs-offcanvas-width); */
+				transform: translateX(100%);
+			}
+		}
+
+		@media(max-width: 499px) {
+			.offcanvas.offcanvas-var {
+				right: 0;
+				left: 0;
+				width: 100% !important;
+				height: 50%;
+				max-height: 100%;
+				transform: translateY(100%);
+			}
+
+			#content {
+				flex-direction: column;
+			}
+
+			#resizer {
+				display: none;
+			}
+		}
+
+		.offcanvas.show:not(.hiding),
+		.offcanvas.showing {
+			transform: none;
+		}
+
+		#resizer {
+			position: fixed;
+			cursor: col-resize;
+			width: 6px;
+			height: 100%;
+			border-left: 3px solid #111;
+			z-index: 30;
+			touch-action: none;
+		}
+
+		#wave-panel {
+			padding: 0 10px 10px;
+		}
+
+		#show-btn {
+			position: fixed;
+			right: 0;
+			top: 20px;
+			color: white;
+			background-color: rgba(128, 128, 128, 0.4);
+			border: 3px solid gray;
+			border-radius: 5px;
+			transition: filter 0.1s;
+		}
+
+		#show-btn:hover {
+			filter: brightness(70%);
+		}
+
+		@media(max-width: 499px) {
+			#show-btn {
+				right: unset;
+				top: unset;
+				left: 5px;
+				bottom: 0;
+			}
+		}
+
+		#info {
+			width: auto;
+		}
+
+		#panel-control-buttons {
+			display: flex;
+			flex-flow: row wrap;
+			gap: 8px;
+			justify-content: flex-end;
+			position: sticky;
+			top: 0px;
+			background: #333;
+			z-index: 20;
+			padding: 10px 0;
+		}
+
+		#panel-control-buttons>a {
+			width: 50px;
 		}
 
 		.small-input {
@@ -143,65 +264,6 @@
 			margin-top: 10px;
 		}
 
-		#content {
-			display: flex;
-			grid-template-columns: 0 350px;
-			height: 100%;
-			width: 100%;
-		}
-
-		#graph-container {
-			position: relative;
-			display: flex;
-			height: 100%;
-			width: 100%;
-		}
-
-		#graph {
-			border: 3px solid var(--bs-primary);
-			width: 100%;
-			height: 100%;
-		}
-
-		#side-panel {
-			height: 100%;
-			background-color: #333;
-			overflow-y: auto;
-			overflow-x: hidden;
-			flex-shrink: 0;
-		}
-
-		#wave-panel {
-			padding: 0 10px 10px;
-		}
-
-		#show-btn {
-			position: fixed;
-			right: 0;
-			top: 20px;
-			color: white;
-			background-color: rgba(128, 128, 128, 0.4);
-			border: 3px solid gray;
-			border-radius: 5px;
-			transition: filter 0.1s;
-		}
-
-		#show-btn:hover {
-			filter: brightness(70%);
-		}
-
-		#panel-control-buttons {
-			position: sticky;
-			top: 0px;
-			background: #333;
-			z-index: 20;
-			padding: 10px 0;
-		}
-
-		#panel-control-buttons>a {
-			width: 50px;
-		}
-
 		#audio-panel {
 			transform: translateX(110%);
 			display: none;
@@ -233,6 +295,7 @@
 		}
 
 		#keyboard {
+			position: fixed;
 			bottom: 0;
 			left: 0;
 			width: 100%;
@@ -244,10 +307,15 @@
 			display: flex;
 			flex-direction: column;
 			align-items: center;
+			visibility: hidden;
+			transform: translateY(100%);
 		}
 
-		#keyboard:not(.hidden) {
+		#keyboard.show {
+			/*:not(.hidden)*/
 			position: fixed;
+			visibility: visible;
+			transform: none;
 		}
 
 		.keyboard-switcher {
@@ -367,7 +435,7 @@
 			top: 0;
 		}
 
-		#keyboard.hidden #keyboard-close {
+		#keyboard:not(.show) #keyboard-close {
 			display: none;
 		}
 
@@ -420,10 +488,6 @@
 			filter: brightness(60%);
 		}
 
-		.hidden {
-			display: none;
-		}
-
 		@media (min-width: 768px) {
 			#backbtn {
 				display: block;
@@ -462,38 +526,32 @@
 			</div>
 			<button id="show-btn" data-bs-toggle="offcanvas" data-bs-target="#side-panel" data-bs-tooltip="tooltip" data-bs-placement="left" data-bs-title="<?php lang('graphing.tooltip.openPanel') ?>"><b>&lt;&lt;</b></button>
 		</div>
-		<div id="side-panel" class="offcanvas offcanvas-end" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1">
+		<div id="side-panel" class="offcanvas offcanvas-var show" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" style="width: 400px">
+			<div id="resizer"></div>
 			<div id="wave-panel" class="sidebar">
-				<div id="panel-control-buttons" class="d-flex flex-wrap">
-					<div class="d-flex">
-						<a type="button" class="btn btn-success me-2" id="hide-btn" data-bs-toggle="offcanvas" data-bs-target="#side-panel" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.closePanel') ?>"><b>&gt;&gt;</b></a>
-						<a type="button" class="btn btn-secondary" data-bs-toggle="dropdown" aria-expanded="false">
-							<?php insertSVG('plus'); ?>
+				<div id="panel-control-buttons">
+					<a type="button" class="btn btn-success" id="hide-btn" data-bs-toggle="offcanvas" data-bs-target="#side-panel" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.closePanel') ?>"><b>&gt;&gt;</b></a>
+					<a type="button" class="btn btn-secondary me-auto" data-bs-toggle="dropdown" aria-expanded="false">
+						<?php insertSVG('plus'); ?>
+					</a>
+					<ul class="dropdown-menu">
+						<li><a class="dropdown-item" type="button" id="add"><?php lang('graphing.expression') ?></a></li>
+						<li><a class="dropdown-item" type="button" id="add-audio"><?php lang('graphing.audio') ?></a></li>
+						<li><a class="dropdown-item" type="button" id="add-variable"><?php lang('graphing.variable') ?></a></li>
+						<li><a class="dropdown-item" type="button" id="add-function"><?php lang('graphing.function') ?></a></li>
+						<li><a class="dropdown-item" type="button" id="add-data"><?php lang('graphing.file') ?></a></li>
+					</ul>
+					<a type="button" class="btn btn-secondary" id="savebtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.save') ?>">
+						<?php insertSVG('download'); ?>
+					</a>
+					<a type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#optionsModal" id="optionsbtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.settings') ?>">
+						<?php insertSVG('settings'); ?>
+					</a>
+					<div id="info" class="input-group">
+						<?php insertLangSwitch('langbtn'); ?>
+						<a type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#aboutModal" id="aboutbtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.about') ?>">
+							<?php insertSVG('about'); ?>
 						</a>
-						<ul class="dropdown-menu">
-							<li><a class="dropdown-item" type="button" id="add"><?php lang('graphing.expression') ?></a></li>
-							<li><a class="dropdown-item" type="button" id="add-audio"><?php lang('graphing.audio') ?></a></li>
-							<li><a class="dropdown-item" type="button" id="add-variable"><?php lang('graphing.variable') ?></a></li>
-							<li><a class="dropdown-item" type="button" id="add-function"><?php lang('graphing.function') ?></a></li>
-							<li><a class="dropdown-item" type="button" id="add-data"><?php lang('graphing.file') ?></a></li>
-						</ul>
-					</div>
-					<div class="d-flex ms-auto">
-						<a type="button" class="btn btn-secondary me-2" id="savebtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.save') ?>">
-							<?php insertSVG('download'); ?>
-						</a>
-						<a type="button" class="btn btn-secondary me-2" id="loadbtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.load') ?>">
-							<div style="transform: rotate(180deg)"><?php insertSVG('download'); ?></div>
-						</a>
-						<a type="button" class="btn btn-secondary me-2" data-bs-toggle="modal" data-bs-target="#optionsModal" id="optionsbtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.settings') ?>">
-							<?php insertSVG('settings'); ?>
-						</a>
-						<div id="info" class="input-group">
-							<?php insertLangSwitch('langbtn'); ?>
-							<a type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#aboutModal" id="aboutbtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.about') ?>">
-								<?php insertSVG('about'); ?>
-							</a>
-						</div>
 					</div>
 				</div>
 				<div id="wave-boxes"></div>
@@ -591,7 +649,7 @@
                             <input type="range" min="1" max="22000" step="1" value="440" class="form-range input-slider" id="frequency-slider">
                         </div> -->
 			</div>
-			<span id="keyboard-open" class="kb-control-button" tabindex="0">
+			<span id="keyboard-open" class="kb-control-button" tabindex="0" style="display: none">
 				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 576 512" fill="currentColor">
 					<path d="M64 112c-8.8 0-16 7.2-16 16V384c0 8.8 7.2 16 16 16H512c8.8 0 16-7.2 16-16V128c0-8.8-7.2-16-16-16H64zM0 128C0 92.7 28.7 64 64 64H512c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128zM176 320H400c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H176c-8.8 0-16-7.2-16-16V336c0-8.8 7.2-16 16-16zm-72-72c0-8.8 7.2-16 16-16h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H120c-8.8 0-16-7.2-16-16V248zm16-96h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H120c-8.8 0-16-7.2-16-16V168c0-8.8 7.2-16 16-16zm64 96c0-8.8 7.2-16 16-16h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H200c-8.8 0-16-7.2-16-16V248zm16-96h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H200c-8.8 0-16-7.2-16-16V168c0-8.8 7.2-16 16-16zm64 96c0-8.8 7.2-16 16-16h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H280c-8.8 0-16-7.2-16-16V248zm16-96h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H280c-8.8 0-16-7.2-16-16V168c0-8.8 7.2-16 16-16zm64 96c0-8.8 7.2-16 16-16h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H360c-8.8 0-16-7.2-16-16V248zm16-96h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H360c-8.8 0-16-7.2-16-16V168c0-8.8 7.2-16 16-16zm64 96c0-8.8 7.2-16 16-16h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H440c-8.8 0-16-7.2-16-16V248zm16-96h16c8.8 0 16 7.2 16 16v16c0 8.8-7.2 16-16 16H440c-8.8 0-16-7.2-16-16V168c0-8.8 7.2-16 16-16z" />
 				</svg>
@@ -602,7 +660,7 @@
 		</div>
 	</div>
 
-	<div id="keyboard" class="hidden"></div>
+	<div id="keyboard"></div>
 
 
 

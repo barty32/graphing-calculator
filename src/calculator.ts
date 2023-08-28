@@ -20,6 +20,7 @@ interface SaveData{
 	name: string,
 	dateSaved: string,
 	keyboardClosed: boolean,
+	sidePanelWidth: number,
 	xOffset: number;
 	yOffset: number;
 	xScale: number;
@@ -97,10 +98,14 @@ const DOM = {
     optionsDegrees:     document.querySelector('#options-degrees') as HTMLInputElement,
     optionsRadians:     document.querySelector('#options-radians') as HTMLInputElement,
 
-    content:    document.querySelector('#content') as HTMLDivElement,
+	content:        document.querySelector('#content') as HTMLDivElement,
+	graphContainer: document.querySelector('#graph-container') as HTMLDivElement,
+    wavePanel:      document.querySelector('#wave-panel') as HTMLDivElement,
+	audioPanel:     document.querySelector('#audio-panel') as HTMLDivElement,
+	sidePanel:      document.querySelector('#side-panel') as HTMLDivElement,
+	resizer:        document.querySelector('#resizer') as HTMLDivElement,
 
-    wavePanel:  document.querySelector('#wave-panel') as HTMLDivElement,
-    audioPanel: document.querySelector('#audio-panel') as HTMLDivElement
+	keyboardOpener: document.querySelector('#keyboard-open') as HTMLSpanElement,
 }
 
 
@@ -597,7 +602,7 @@ class Line{
 		errTooltip.classList.add('e-tooltip', 'rounded');
 		
 		const resultBox = document.createElement('span');
-		resultBox.innerHTML = '=&nbsp;1.2';
+		resultBox.style.display = 'none';
 		resultBox.classList.add('symbol', 'result-box');
 
 
@@ -731,20 +736,21 @@ class Line{
             handlers: {
                 edit: this.editHandler
 			},
-			typingPercentWritesPercentOf: true,
 		} as MathQuill.v3.Config);
 		
 		const textarea = fnInput.querySelector('textarea');
 		if (textarea) {
 			textarea.inputMode = 'none';
 			textarea.addEventListener('focus', () => {
-				if (!keyboardClosed && window.matchMedia("(max-width: 450px)")) {
+				if (!keyboardClosed && window.matchMedia("(max-width: 499px)")) {
 					keyboard.show();
 				}
+				DOM.keyboardOpener.style.display = '';
 			});
 
 			textarea.addEventListener('blur', () => {
 				keyboard.hide();
+				DOM.keyboardOpener.style.display = 'none';
 			});
 
 			textarea.setAttribute('data-id', this.id.toString());
@@ -953,10 +959,11 @@ document.querySelector('#add-function')?.addEventListener('click', () => {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
+    // DOM.sidePanel.style.width = '400px';
     //open panel by default on PC
-    if (window.matchMedia('(min-width: 768px)').matches) {
-        document.querySelector('#side-panel')?.classList.add('show');
-    }
+    // if (window.matchMedia('(min-width: 768px)').matches) {
+    // 	DOM.sidePanel.classList.add('show');
+    // }
     //const tooltipTriggerList = document.querySelectorAll('[data-bs-tooltip="tooltip"]');
     // @ts-ignore
     //[...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, { delay: { show: 1000, hide: 0} }));
@@ -1020,9 +1027,31 @@ document.addEventListener("DOMContentLoaded", function () {
 		keyboardClosed = true;
 	});
 
-	document.querySelector('#keyboard-open')?.addEventListener('click', () => {
+	keyboard.onOpened = () => {
+		if (window.matchMedia('(max-width: 499px)').matches) {
+			DOM.graphContainer.style.height = '50%';
+			DOM.content.style.height = (DOM.content.clientHeight - keyboard.DOM.keyboard.clientHeight).toString() + 'px';
+		}
+		DOM.sidePanel.style.height = (DOM.sidePanel.clientHeight - keyboard.DOM.keyboard.clientHeight).toString() + 'px';
+		
+		//scroll to focused element
+		document.activeElement?.scrollIntoView({ block: 'center' });
+	};
+
+	keyboard.onClosed = () => {
+		DOM.graphContainer.style.height = '';
+		DOM.sidePanel.style.height = '';
+		DOM.content.style.height = '';
+	};
+
+	DOM.keyboardOpener.addEventListener('click', () => {
 		keyboardClosed = false;
 		keyboard.show();
+	});
+
+	//prevent losing focus on focused element
+	DOM.keyboardOpener.addEventListener('pointerdown', (e) => {
+		e.preventDefault();
 	});
 });
 
@@ -1035,6 +1064,31 @@ document.querySelector('#audio-back')?.addEventListener('click', () => {
     setTimeout(() => { DOM.audioPanel.style.display = 'none'; }, 300);
 });
 
+let resizing = false;
+let prevX = 0;
+
+DOM.resizer.addEventListener('pointerdown', (e) => {
+	DOM.resizer.setPointerCapture(e.pointerId);
+	resizing = true;
+	prevX = e.clientX;
+});
+
+DOM.resizer.addEventListener('pointerup', (e) => {
+	resizing = false;
+	DOM.resizer.releasePointerCapture(e.pointerId);
+});
+
+DOM.resizer.addEventListener('pointermove', (e) => {
+	if (resizing) {
+		const movementX = e.pageX - prevX;
+		const newWidth = -movementX + parseFloat(DOM.sidePanel.style.width);
+		//minimum width: 350px
+		if (newWidth > 350) {
+			DOM.sidePanel.style.width = newWidth.toString() + 'px';
+			prevX = e.clientX;
+		}
+	}
+});
 
 DOM.waveSelect?.addEventListener('change', (e) => {
     currentEditedLine.audioData.waveType = DOM.waveSelect.value;
@@ -1180,6 +1234,7 @@ function saveData(where: 'localStorage' | 'download') {
 		name: '',
 		dateSaved: new Date().toUTCString(),
 		keyboardClosed: keyboardClosed,
+		sidePanelWidth: parseFloat(DOM.sidePanel.style.width),
 		xOffset: graph.xOffset,
 		yOffset: graph.yOffset,
 		xScale: graph.xScale,
@@ -1208,6 +1263,8 @@ function loadData(source: 'localStorage' | 'upload') {
 		DOM.waveList.replaceChildren();
 
 		keyboardClosed = data.keyboardClosed;
+		DOM.sidePanel.style.width = data.sidePanelWidth.toString() + 'px';
+
 		graph.xOffset = data.xOffset;
 		graph.yOffset = data.yOffset;
 		graph.xScale = data.xScale;

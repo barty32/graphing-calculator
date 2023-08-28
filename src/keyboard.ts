@@ -254,6 +254,8 @@ export class Keyboard {
 	shown = false;
 	shifted = false;
 	handler: (cmd: string) => void;
+	onOpened: () => void;
+	onClosed: () => void;
 
 	constructor(element: HTMLDivElement, handler: (cmd: string) => void) {
 		this.handler = handler;
@@ -407,12 +409,16 @@ export class Keyboard {
 
 	show() {
 		this.shown = true;
-		this.DOM.keyboard.classList.remove('hidden');
+		this.DOM.keyboard.classList.add('show');
+		// this.DOM.keyboard.classList.remove('hidden');
+		if (this.onOpened) this.onOpened();
 	}
 
 	hide() {
 		this.shown = false;
-		this.DOM.keyboard.classList.add('hidden');
+		this.DOM.keyboard.classList.remove('show');
+		// this.DOM.keyboard.classList.add('hidden');
+		if (this.onClosed) this.onClosed();
 	}
 
 	keyHandler(key: Key) {

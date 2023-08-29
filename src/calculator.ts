@@ -685,7 +685,7 @@ class Line{
 				// }
 				// const time = performance.now() - startTime;
 				// console.log(time / 50);
-				this.useWorker = true;
+				//this.useWorker = true;
             }
             catch (e) {
                 if (e instanceof LatexParseError) {
@@ -970,7 +970,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	//add 1 expression box by default
 	lines.push(new Line(LineType.expression));
-    graph.fixSize();
+    //graph.fixSize();
 	graph.resetZoom();
 
 	keyboard = new Keyboard(document.querySelector('#keyboard')!, (cmd) => {
@@ -1062,6 +1062,18 @@ document.querySelector('#audio-back')?.addEventListener('click', () => {
         DOM.audioPanel.style.transform = 'translateX(110%)';
     }, 20);
     setTimeout(() => { DOM.audioPanel.style.display = 'none'; }, 300);
+});
+
+DOM.sidePanel.addEventListener('shown.bs.offcanvas', () => {
+	//fix side panel opening when it's on bottom
+	//this forces css to change layout
+	//this is a dirty fix, but i didn't find a better solution
+	if (window.matchMedia('(max-width: 499px)').matches) {
+		graph.canvas.style.height = DOM.sidePanel.clientHeight.toString() + 'px';
+		setTimeout(() => {
+			graph.canvas.style.height = '';
+		}, 100);
+	}
 });
 
 let resizing = false;

@@ -13,9 +13,6 @@
 </head>
 
 <body>
-
-
-
 	<a href="../" type="button" class="btn btn-outline-light" id="backbtn">‹
 		<?php lang('back') ?>
 	</a>
@@ -51,7 +48,7 @@
 						<li><a class="dropdown-item" type="button" id="add-function"><?php lang('graphing.function') ?></a></li>
 						<li><a class="dropdown-item" type="button" id="add-data"><?php lang('graphing.file') ?></a></li>
 					</ul>
-					<a type="button" class="btn btn-secondary" id="savebtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.save') ?>">
+					<a type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#savesModal" id="savebtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.save') ?>">
 						<?php insertSVG('download'); ?>
 					</a>
 					<a type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#optionsModal" id="optionsbtn" data-bs-tooltip="tooltip" data-bs-placement="bottom" data-bs-title="<?php lang('graphing.tooltip.settings') ?>">
@@ -176,27 +173,31 @@
 
 	<?php bootstrapModal('optionsModal', $lang('graphing.options.title'), <<<HTML
         <div class="form-check form-switch">
-		    <input class="form-check-input" type="checkbox" role="switch" id="options-grid" checked>
+		    <input class="form-check-input" type="checkbox" role="switch" id="options-grid"  autocomplete="off" checked>
             <label class="form-check-label" for="options-grid">{$lang('graphing.options.grid')}</label>
         </div>
         <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" role="switch" id="options-minor-grid" checked>
+            <input class="form-check-input" type="checkbox" role="switch" id="options-minor-grid"  autocomplete="off" checked>
             <label class="form-check-label" for="options-minor-grid">{$lang('graphing.options.gridMinor')}</label>
         </div>
         <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" role="switch" id="options-axis-numbers" checked>
+            <input class="form-check-input" type="checkbox" role="switch" id="options-axis-numbers"  autocomplete="off" checked>
             <label class="form-check-label" for="options-axis-numbers">{$lang('graphing.options.axisNumbers')}</label>
         </div>
-        <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" role="switch" id="options-connect" checked>
+        <!-- <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="options-connect"  autocomplete="off" checked>
             <label class="form-check-label" for="options-connect">{$lang('graphing.options.connectLines')}</label>
+        </div> -->
+		<div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="options-dpi"  autocomplete="off" checked>
+            <label class="form-check-label" for="options-dpi">{$lang('graphing.options.dpi')}</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="options-degrad" id="options-degrees">
+            <input class="form-check-input" type="radio" name="options-degrad" id="options-degrees" autocomplete="off">
             <label class="form-check-label" for="options-degrees">{$lang('graphing.options.degrees')}</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="options-degrad" id="options-radians" checked>
+            <input class="form-check-input" type="radio" name="options-degrad" id="options-radians"  autocomplete="off" checked>
             <label class="form-check-label" for="options-radians">{$lang('graphing.options.radians')}</label>
         </div>
 
@@ -208,6 +209,22 @@ HTML); ?>
 		<span>{$lang('aboutmodal.updated')}: {$lang('month.august')} 2023</span>
 		<p>© 2023 by barty12</p>
 HTML); ?>
+
+	<div class="modal fade" id="savesModal" tabindex="-1" aria-labelledby="savesModalLabel" aria-hidden="true">
+		<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 class="modal-title fs-5" id="savesModalLabel">Save</h1>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+				</div>
+			</div>
+		</div>
+	</div>
 
 	<script>
 		const lng = {

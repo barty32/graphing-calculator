@@ -94,7 +94,8 @@ const DOM = {
 
     optionsGrid:        document.querySelector('#options-grid') as HTMLInputElement,
     optionsMinorGrid:   document.querySelector('#options-minor-grid') as HTMLInputElement,
-    optionsAxisNumbers: document.querySelector('#options-axis-number') as HTMLInputElement,
+	optionsAxisNumbers: document.querySelector('#options-axis-numbers') as HTMLInputElement,
+	optionsDpi:         document.querySelector('#options-dpi') as HTMLInputElement,
     optionsDegrees:     document.querySelector('#options-degrees') as HTMLInputElement,
     optionsRadians:     document.querySelector('#options-radians') as HTMLInputElement,
 
@@ -959,18 +960,13 @@ document.querySelector('#add-function')?.addEventListener('click', () => {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
-    // DOM.sidePanel.style.width = '400px';
-    //open panel by default on PC
-    // if (window.matchMedia('(min-width: 768px)').matches) {
-    // 	DOM.sidePanel.classList.add('show');
-    // }
     //const tooltipTriggerList = document.querySelectorAll('[data-bs-tooltip="tooltip"]');
     // @ts-ignore
     //[...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, { delay: { show: 1000, hide: 0} }));
 
 	//add 1 expression box by default
 	lines.push(new Line(LineType.expression));
-    //graph.fixSize();
+    //TODO: graph.fixSize();
 	graph.resetZoom();
 
 	keyboard = new Keyboard(document.querySelector('#keyboard')!, (cmd) => {
@@ -1032,7 +1028,6 @@ document.addEventListener("DOMContentLoaded", function () {
 			DOM.graphContainer.style.height = '50%';
 			DOM.content.style.height = (DOM.content.clientHeight - keyboard.DOM.keyboard.clientHeight).toString() + 'px';
 		}
-		DOM.sidePanel.style.height = (DOM.sidePanel.clientHeight - keyboard.DOM.keyboard.clientHeight).toString() + 'px';
 		
 		//scroll to focused element
 		document.activeElement?.scrollIntoView({ block: 'center' });
@@ -1127,6 +1122,11 @@ DOM.optionsAxisNumbers?.addEventListener('change', () => {
     graph.draw();
 });
 
+DOM.optionsDpi?.addEventListener('change', () => {
+	graph.options.dpiScale = DOM.optionsDpi.checked ? window.devicePixelRatio : 1;
+	graph.draw();
+});
+
 DOM.optionsDegrees?.addEventListener('click', () => {
     for (const line of lines) {
         line.parser.rules.useDegrees = true;
@@ -1141,13 +1141,6 @@ DOM.optionsRadians?.addEventListener('click', () => {
         //line.updateWorkerRules();
     }
     graph.draw(true);
-});
-
-document.querySelector('#savebtn')?.addEventListener('click', () => {
-	saveData('localStorage');
-});
-document.querySelector('#loadbtn')?.addEventListener('click', () => {
-	loadData('localStorage');
 });
 
 
@@ -1215,6 +1208,27 @@ function updateBoxVisibility() {
     else
         DOM.skew.classList.add('hidden');
 }
+
+
+document.getElementById('savesModal')?.addEventListener('show.bs.modal', e => {
+	//TODO: make better save and load system
+	const content = document.querySelector('#savesModal .modal-body') as HTMLDivElement;
+	content.innerHTML = '';
+	const save = document.createElement('button');
+	save.innerHTML = 'Save to Local storage';
+	save.onclick = () => {
+		saveData('localStorage');
+	}
+
+	const load = document.createElement('button');
+	load.innerHTML = 'Load from Local storage';
+	load.onclick = () => {
+		loadData('localStorage');
+	}
+	content.appendChild(save);
+	content.appendChild(load);
+});
+
 
 function saveData(where: 'localStorage' | 'download') {
 	let linesToSave = [];

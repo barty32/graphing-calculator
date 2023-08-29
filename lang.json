@@ -34,6 +34,7 @@
 		"graphing.options.gridMinor": "Minor grid",
 		"graphing.options.axisNumbers": "Axis numbers",
 		"graphing.options.connectLines": "Connect points in lines",
+		"graphing.options.dpi": "Adjust DPI for HighDPI displays",
 		"graphing.options.degrees": "Degrees",
 		"graphing.options.radians": "Radians",
 		"graphing.tooltip.defaultZoom": "Default zoom",
@@ -79,6 +80,7 @@
 		"graphing.options.gridMinor": "Vedlejší mřížka",
 		"graphing.options.axisNumbers": "Čísla os",
 		"graphing.options.connectLines": "Spojovat body",
+		"graphing.options.dpi": "Přizpůsobit DPI pro displeje s vysokým DPI",
 		"graphing.options.degrees": "Stupně",
 		"graphing.options.radians": "Radiány"
 	}

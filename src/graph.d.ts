@@ -11,7 +11,6 @@ export interface Point {
     y: number | undefined;
     connect: boolean;
     selected: boolean;
-    debug: number;
 }
 export declare class Graph {
     canvas: HTMLCanvasElement;
@@ -20,8 +19,7 @@ export declare class Graph {
     private idCounter;
     private moving;
     private inspecting;
-    private evCache;
-    private evPrevCache;
+    private pointerCache;
     private lastDistance;
     private scaleXAxis;
     private scaleYAxis;
@@ -43,13 +41,11 @@ export declare class Graph {
         axisColor: string;
         axisActiveColor: string;
         background: string;
-        controlButtons: boolean;
         lineWidth: number;
+        dpiScale: number;
         minZoom: number;
         maxZoom: number;
     };
-    prevX: number;
-    prevY: number;
     private oldpt;
     constructor(canvas: HTMLCanvasElement);
     /**
@@ -70,7 +66,6 @@ export declare class Graph {
     zoomIn(): void;
     zoomOut(): void;
     resetZoom(): void;
-    fixSize(): void;
     draw(requestRecalculation?: boolean): void;
     private getTouchDistance;
     private getTouchCenter;

@@ -1,9 +1,7 @@
  TODO list:
 
 
- - fix settings
  - add how to use
- - show const result in number
  - add access to serial port
  - improve rendering algorithm (when there are many points)
  - fix colors in dark theme
@@ -18,6 +16,7 @@ parser:
  - BUG: parser class default resolution is 0 (integral evaluation stucks in a loop)
  - fix empty parentheses
  - add derivative ' notation
+ - show const result in number
  - add base to logarithms
  - add support for fn^x(t)
  - add degree operator
@@ -39,6 +38,8 @@ parser:
  - moved string literals to language file
  - sidebar is now resizable
  - sidebar sticks to bottom on mobile phones (viewport < 500px)
+ - fixed rendering on high dpi monitors
+ - fixed non-functional options in settings
 
  Done (v1.6.1)
  - fixed bug with capital letters in custom functions

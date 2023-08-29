@@ -1,0 +1,152 @@
+#keyboard {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+	/* height: 250px; */
+	max-height: 100%;
+	z-index: 1200;
+	background-color: #111;
+	user-select: none;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	visibility: hidden;
+	transform: translateY(100%);
+}
+
+#keyboard.show {
+	/*:not(.hidden)*/
+	position: fixed;
+	visibility: visible;
+	transform: none;
+}
+
+.keyboard-switcher {
+	align-self: flex-start;
+	display: flex;
+}
+
+.keyboard-switcher>span {
+	padding: 5px 10px;
+	margin: 3px 1px;
+	color: white;
+	cursor: pointer;
+}
+
+.keyboard-switcher>span:not(.active):hover {
+	color: var(--bs-primary);
+	background: #333;
+	border-radius: 5px;
+}
+
+.keyboard-switcher>span.active {
+	color: var(--bs-primary);
+	border-bottom: 2px solid var(--bs-primary)
+}
+
+.keyboard-button {
+	background: #222;
+	color: white;
+	font-size: 25px;
+	border-radius: 10px;
+	cursor: pointer;
+	/* touch-action: none; */
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.symbol {
+	font-family: Symbola, 'Times New Roman', serif;
+}
+
+.char {
+	font-family: 'Times New Roman', Symbola, serif;
+}
+
+.italic {
+	font-style: italic;
+}
+
+.keyboard-button svg {
+	width: 40px;
+	height: 40px;
+}
+
+.keyboard-button:hover {
+	background-color: #333;
+}
+
+.keyboard-button:active {
+	background-color: #111;
+}
+
+.keyboard-container {
+	/* background: #00ff00bb; */
+	width: 100%;
+	height: 100%;
+	max-width: 800px;
+	padding: 5px;
+}
+
+.keyboard-container>div {
+	display: grid;
+	gap: 5px;
+	/* height: 200px; */
+	width: 100%;
+	height: 100%;
+}
+
+#keyboard-numbers {
+	grid-template-columns: 4fr 4fr 1fr repeat(4, 4fr) 1fr repeat(3, 4fr);
+	grid-template-rows: repeat(4, 1fr);
+}
+
+#keyboard-functions {
+	grid-template-columns: 2fr 2fr 1fr repeat(3, 4fr 4fr 1fr);
+	grid-template-rows: repeat(4, 1fr);
+	overflow-x: auto;
+}
+
+#keyboard-letters {
+	grid-template-columns: repeat(20, 1fr);
+	grid-template-rows: repeat(5, 1fr);
+}
+
+.kb-control-button {
+	position: absolute;
+	padding: 2px 5px;
+	margin: 5px;
+	color: white;
+	background: #222;
+	cursor: pointer;
+	border-radius: 5px;
+	display: flex;
+	align-items: center;
+}
+
+#keyboard-open {
+	position: fixed;
+	right: 0;
+	bottom: 0;
+	z-index: 4;
+	border: 1px solid #333;
+}
+
+#keyboard-close {
+	right: 0;
+	top: 0;
+}
+
+#keyboard:not(.show) #keyboard-close {
+	display: none;
+}
+
+.kb-control-button svg {
+	margin: 2px;
+}
+
+.kb-control-button:hover {
+	background: #444;
+}
